@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import Link from 'next/link'
 import { ClientDialog } from '@/components/clients/ClientDialog'
 import type { Client } from '@/types'
 
@@ -22,8 +21,8 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
           <>
             <div className="block lg:hidden space-y-3 p-4">
               {clients.map(client => (
-                <Link key={client.id} href={`/clients/${client.id}`}
-                  className="block bg-white rounded-xl border border-[#e0e0e3] shadow-[0px_4px_20px_rgba(26,28,30,0.04)] p-4">
+                <div key={client.id} onClick={() => setDialog({ open: true, client })}
+                  className="block bg-white rounded-xl border border-[#e0e0e3] shadow-[0px_4px_20px_rgba(26,28,30,0.04)] p-4 cursor-pointer">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium text-[#1a1c1e]">{client.name}</p>
@@ -37,7 +36,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                   </div>
                   {client.email && <p className="text-sm text-[#8a8c94] mt-1">{client.email}</p>}
                   {client.phone && <p className="text-sm text-[#8a8c94]">{client.phone}</p>}
-                </Link>
+                </div>
               ))}
             </div>
             <div className="hidden lg:block">
