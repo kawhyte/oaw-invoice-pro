@@ -24,7 +24,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!client?.email) return Response.json({ error: 'Client has no email address' }, { status: 400 })
 
   const buffer = await renderToBuffer(
-    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null })
+    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null }) as any
   )
 
   const fmt = (n: number, c: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency: c }).format(n)

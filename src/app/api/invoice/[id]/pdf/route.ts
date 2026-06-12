@@ -21,10 +21,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!invoice) return new Response('Not found', { status: 404 })
 
   const buffer = await renderToBuffer(
-    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null })
+    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null }) as any
   )
 
-  return new Response(buffer, {
+  return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${invoice.invoice_number}.pdf"`,

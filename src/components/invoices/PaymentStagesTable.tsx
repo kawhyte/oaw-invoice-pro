@@ -44,7 +44,7 @@ export function PaymentStagesTable({ invoiceId, payments, currency }: Props) {
             </td>
             <td className="px-6 py-4 text-right">
               <button onClick={() => toggle(p)} disabled={isPending}
-                className={`text-xs font-medium disabled:opacity-50 ${p.status === 'paid' ? 'text-gray-400 hover:text-gray-600' : 'text-blue-600 hover:text-blue-800'}`}>
+                className={`text-xs font-medium disabled:opacity-50 ${p.status === 'paid' ? 'text-gray-400 hover:text-gray-600' : 'text-emerald-700 hover:text-emerald-800'}`}>
                 {p.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}
               </button>
             </td>

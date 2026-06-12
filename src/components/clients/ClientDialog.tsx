@@ -42,27 +42,27 @@ export function ClientDialog({ client, onClose }: Props) {
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Name *</label>
             <input name="name" required defaultValue={client?.name}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Email</label>
             <input name="email" type="email" defaultValue={client?.email ?? ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Phone</label>
             <input name="phone" defaultValue={client?.phone ?? ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Company</label>
             <input name="company" defaultValue={client?.company ?? ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Address</label>
             <input name="address" defaultValue={client?.address ?? ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
           </div>
           <div className="border-t border-gray-100 pt-4">
             <p className="text-xs text-gray-400 mb-3">Optional billing info</p>
@@ -70,7 +70,7 @@ export function ClientDialog({ client, onClose }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-800 mb-1">Currency</label>
                 <select name="currency" defaultValue={client?.currency ?? ''}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="">— Select —</option>
                   <option value="JMD">JMD</option>
                   <option value="USD">USD</option>
@@ -80,7 +80,7 @@ export function ClientDialog({ client, onClose }: Props) {
                 <label className="block text-sm font-medium text-gray-800 mb-1">Country</label>
                 <input name="country" defaultValue={client?.country ?? ''}
                   placeholder="e.g. Jamaica"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
             </div>
           </div>
@@ -90,7 +90,7 @@ export function ClientDialog({ client, onClose }: Props) {
             ) : <div />}
             <div className="flex gap-2">
               <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-              <button type="submit" disabled={isPending} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button type="submit" disabled={isPending} className="px-4 py-2 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50">
                 {isPending ? 'Saving...' : 'Save'}
               </button>
             </div>

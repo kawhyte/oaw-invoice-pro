@@ -122,3 +122,25 @@ export async function deleteInvoiceAction(id: string) {
   await supabase.from('invoices').delete().eq('id', id).eq('user_id', user.id)
   revalidatePath('/invoices')
 }
+
+export async function markPaymentPaidAction(paymentId: string, invoiceId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  await supabase
+    .from('invoice_payments')
+    .update({ status: 'paid', paid_date: new Date().toISOString().split('T')[0] })
+    .eq('id', paymentId)
+  revalidatePath(`/invoices/${invoiceId}`)
+}
+
+export async function markPaymentUnpaidAction(paymentId: string, invoiceId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  await supabase
+    .from('invoice_payments')
+    .update({ status: 'pending', paid_date: null })
+    .eq('id', paymentId)
+  revalidatePath(`/invoices/${invoiceId}`)
+}

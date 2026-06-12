@@ -30,7 +30,7 @@ export function FileList({ projectId, files }: Props) {
             <span className="text-red-500 shrink-0">📄</span>
             <div className="min-w-0">
               <a href={file.signedUrl} target="_blank" rel="noopener noreferrer"
-                className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block">{file.name}</a>
+                className="text-sm font-medium text-emerald-700 hover:text-emerald-800 truncate block">{file.name}</a>
               {file.size_bytes && <p className="text-xs text-gray-400">{formatBytes(file.size_bytes)}</p>}
             </div>
           </div>

@@ -23,10 +23,10 @@ export function AmountPaidForm({ invoiceId, currentAmountPaid, total, currency }
           <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid ({currency})</label>
           <input type="number" min="0" step="0.01" max={total} value={value} onChange={e => setValue(e.target.value)}
             placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
         </div>
         <button type="submit" disabled={isPending}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          className="px-4 py-2 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50">
           {isPending ? 'Updating...' : 'Update'}
         </button>
         <p className="text-sm text-gray-500 mb-0.5">of {fmt(total)} total</p>

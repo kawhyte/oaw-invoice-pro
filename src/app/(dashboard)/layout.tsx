@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { NavLinks } from '@/components/NavLinks'
 import { NavDropdown } from '@/components/NavDropdown'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -15,18 +15,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .single()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="min-h-screen bg-stone-50">
+      <nav className="bg-emerald-900 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-6">
-              <span className="font-bold text-gray-900 text-sm">OAW Invoice Pro</span>
-              <div className="flex items-center gap-1">
-                <Link href="/dashboard" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Dashboard</Link>
-                <Link href="/clients" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Clients</Link>
-                <Link href="/projects" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Projects</Link>
-                <Link href="/invoices" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Invoices</Link>
-              </div>
+              <span className="font-semibold text-emerald-100 text-sm tracking-tight">
+                OAW Invoice Pro
+              </span>
+              <NavLinks />
             </div>
             <NavDropdown
               logoUrl={bizSettings?.logo_url ?? null}

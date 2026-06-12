@@ -13,7 +13,7 @@ const STATUS_STYLES: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = { draft: 'Draft', sent: 'Sent', partial: 'Partial', paid: 'Paid', overdue: 'Overdue' }
 const ALL_STATUSES = ['draft', 'sent', 'partial', 'paid', 'overdue']
 
-interface InvoiceRow extends Invoice {
+interface InvoiceRow extends Omit<Invoice, 'projects'> {
   projects: { title: string; job_type: string | null; location_address: string | null; clients: { name: string } | null } | null
 }
 
@@ -41,9 +41,9 @@ export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
       <div className="flex gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search by client, invoice #, or location..."
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white" />
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
           <option value="all">All Status</option>
           {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
@@ -52,7 +52,7 @@ export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <span className="text-sm font-medium text-gray-700">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</span>
-          <button onClick={() => router.push('/invoices/new')} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button onClick={() => router.push('/invoices/new')} className="px-3 py-1.5 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition-colors">
             + New Invoice
           </button>
         </div>

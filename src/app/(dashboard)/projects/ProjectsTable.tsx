@@ -28,7 +28,7 @@ export function ProjectsTable({ projects, clients }: Props) {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <span className="text-sm font-medium text-gray-700">All Projects</span>
-          <button onClick={() => setShowNew(true)} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button onClick={() => setShowNew(true)} className="px-3 py-1.5 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition-colors">
             + New Project
           </button>
         </div>

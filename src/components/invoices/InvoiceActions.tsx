@@ -42,7 +42,7 @@ export function InvoiceActions({ invoiceId, clientEmail, status }: { invoiceId: 
       </a>
       {clientEmail && (
         <button onClick={handleEmail} disabled={emailStatus === 'sending'}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+          className="px-3 py-1.5 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50 transition-colors">
           {emailStatus === 'idle' ? 'Email to Client' : emailStatus === 'sending' ? 'Sending...' : emailStatus === 'sent' ? '✓ Sent' : 'Error — Retry'}
         </button>
       )}

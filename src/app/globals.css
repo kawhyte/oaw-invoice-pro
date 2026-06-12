@@ -1,4 +1,9 @@
 @import 'leaflet/dist/leaflet.css';
+
+body {
+  background-color: #fafaf9;
+}
+
 @import "tailwindcss";
 
 :root {

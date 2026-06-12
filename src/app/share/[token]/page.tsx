@@ -4,7 +4,7 @@ import type { ProjectFile, ProjectNote } from '@/types'
 
 const STATUS_STYLES = {
   discovery: 'bg-gray-100 text-gray-700',
-  in_progress: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-emerald-100 text-emerald-800',
   review: 'bg-amber-100 text-amber-700',
   complete: 'bg-green-100 text-green-700',
 }
@@ -43,10 +43,10 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   const client = project.clients as any
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-stone-50">
+      <header className="bg-emerald-900">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="font-semibold text-gray-900 text-sm">OAW Invoice Pro</span>
+          <span className="font-semibold text-emerald-100 text-sm">OAW Invoice Pro</span>
           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[project.status as keyof typeof STATUS_STYLES]}`}>
             {STATUS_LABELS[project.status as keyof typeof STATUS_LABELS]}
           </span>
@@ -77,7 +77,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                       <span className="text-sm text-gray-700 truncate">{file.name}</span>
                     </div>
                     <a href={file.signedUrl} target="_blank" rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-800 shrink-0 ml-4 font-medium">
+                      className="text-sm text-emerald-700 hover:text-emerald-800 shrink-0 ml-4 font-medium">
                       Download
                     </a>
                   </div>
@@ -95,7 +95,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             </div>
             <div className="p-6 space-y-4">
               {(notes as ProjectNote[]).map(note => (
-                <div key={note.id} className="border-l-2 border-blue-200 pl-4">
+                <div key={note.id} className="border-l-2 border-emerald-200 pl-4">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{note.content}</p>
                   <p className="text-xs text-gray-400 mt-1">
                     {new Date(note.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
