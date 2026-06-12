@@ -22,20 +22,18 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Currency</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {clients.map(client => (
                 <tr key={client.id} onClick={() => setDialog({ open: true, client })} className="hover:bg-gray-50 cursor-pointer transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{client.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{client.company ?? '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{client.email ?? '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{client.phone ?? '—'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{client.currency}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{client.country}</td>
                 </tr>
               ))}
             </tbody>

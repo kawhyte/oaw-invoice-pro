@@ -41,27 +41,47 @@ export function ClientDialog({ client, onClose }: Props) {
         <form ref={formRef} onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Name *</label>
-            <input name="name" required defaultValue={client?.name} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input name="name" required defaultValue={client?.name}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Email</label>
-            <input name="email" type="email" defaultValue={client?.email ?? ''} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input name="email" type="email" defaultValue={client?.email ?? ''}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Phone</label>
-            <input name="phone" defaultValue={client?.phone ?? ''} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input name="phone" defaultValue={client?.phone ?? ''}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-800 mb-1">Currency</label>
-              <select name="currency" defaultValue={client?.currency ?? 'JMD'} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="JMD">JMD</option>
-                <option value="USD">USD</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-800 mb-1">Country</label>
-              <input name="country" defaultValue={client?.country ?? 'Jamaica'} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Company</label>
+            <input name="company" defaultValue={client?.company ?? ''}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-800 mb-1">Address</label>
+            <input name="address" defaultValue={client?.address ?? ''}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs text-gray-400 mb-3">Optional billing info</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Currency</label>
+                <select name="currency" defaultValue={client?.currency ?? ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">— Select —</option>
+                  <option value="JMD">JMD</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-800 mb-1">Country</label>
+                <input name="country" defaultValue={client?.country ?? ''}
+                  placeholder="e.g. Jamaica"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-between pt-2">

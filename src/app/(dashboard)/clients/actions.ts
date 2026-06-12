@@ -10,10 +10,12 @@ export async function createClientAction(formData: FormData) {
   await supabase.from('clients').insert({
     user_id: user.id,
     name: formData.get('name') as string,
-    email: formData.get('email') as string || null,
-    phone: formData.get('phone') as string || null,
-    currency: formData.get('currency') as string,
-    country: formData.get('country') as string,
+    email: (formData.get('email') as string) || null,
+    phone: (formData.get('phone') as string) || null,
+    company: (formData.get('company') as string) || null,
+    address: (formData.get('address') as string) || null,
+    currency: (formData.get('currency') as string) || null,
+    country: (formData.get('country') as string) || null,
   })
   revalidatePath('/clients')
 }
@@ -25,10 +27,12 @@ export async function updateClientAction(id: string, formData: FormData) {
 
   await supabase.from('clients').update({
     name: formData.get('name') as string,
-    email: formData.get('email') as string || null,
-    phone: formData.get('phone') as string || null,
-    currency: formData.get('currency') as string,
-    country: formData.get('country') as string,
+    email: (formData.get('email') as string) || null,
+    phone: (formData.get('phone') as string) || null,
+    company: (formData.get('company') as string) || null,
+    address: (formData.get('address') as string) || null,
+    currency: (formData.get('currency') as string) || null,
+    country: (formData.get('country') as string) || null,
   }).eq('id', id).eq('user_id', user.id)
   revalidatePath('/clients')
 }
