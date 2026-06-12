@@ -59,7 +59,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden isolate">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900">Project Locations</h2>
           </div>
