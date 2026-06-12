@@ -15,7 +15,7 @@ export function StatusChip({ status }: { status: string }) {
   if (!style) return null
   return (
     <span
-      className="px-2.5 py-0.5 rounded-full text-xs font-medium label-caps"
+      className="px-2.5 py-0.5 rounded-full text-xs font-medium label-caps whitespace-nowrap"
       style={{ backgroundColor: style.bg, color: style.text }}
     >
       {style.label}

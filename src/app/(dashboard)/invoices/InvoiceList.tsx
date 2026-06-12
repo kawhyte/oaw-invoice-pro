@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { Invoice } from '@/types'
 import { StatusChip } from '@/components/ui/StatusChip'
 
@@ -54,37 +55,69 @@ export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
             {search || statusFilter !== 'all' ? 'No invoices match your search.' : 'No invoices yet.'}
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-[#f8f9fa]">
-              <tr>
-                <th className="px-6 py-3 text-left label-caps">Invoice #</th>
-                <th className="px-6 py-3 text-left label-caps">Client</th>
-                <th className="px-6 py-3 text-left label-caps">Job Type</th>
-                <th className="px-6 py-3 text-left label-caps">Location</th>
-                <th className="px-6 py-3 text-right label-caps">Total</th>
-                <th className="px-6 py-3 text-right label-caps">Owing</th>
-                <th className="px-6 py-3 text-left label-caps">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(inv => {
-                const owing = inv.total - inv.amount_paid
+          <>
+            <div className="block lg:hidden space-y-3 p-4">
+              {filtered.map(invoice => {
+                const owing = invoice.total - invoice.amount_paid
                 return (
-                  <tr key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)} className="hover:bg-[#f8f9fa] cursor-pointer transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] data-mono">{inv.invoice_number}</td>
-                    <td className="px-6 py-4 text-sm text-[#5a5c62]">{inv.projects?.clients?.name ?? '—'}</td>
-                    <td className="px-6 py-4 text-sm text-[#8a8c94]">{inv.projects?.job_type ?? '—'}</td>
-                    <td className="px-6 py-4 text-sm text-[#8a8c94] max-w-32 truncate">{inv.projects?.location_address ?? '—'}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(inv.total, inv.currency)}</td>
-                    <td className={`px-6 py-4 text-sm font-medium text-right data-mono ${owing > 0 ? 'text-amber-600' : 'text-gray-400'}`}>{fmt(owing, inv.currency)}</td>
-                    <td className="px-6 py-4">
-                      <StatusChip status={inv.status} />
-                    </td>
-                  </tr>
+                  <Link key={invoice.id} href={`/invoices/${invoice.id}`}
+                    className="block bg-white rounded-xl border border-[#e0e0e3] shadow-[0px_4px_20px_rgba(26,28,30,0.04)] p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-mono font-medium text-[#1a1c1e]">{invoice.invoice_number}</span>
+                      <StatusChip status={invoice.status} />
+                    </div>
+                    <p className="text-sm text-[#5a5c62] mb-3">
+                      {invoice.projects?.clients?.name ?? '—'}
+                      {invoice.projects?.job_type ? ` · ${invoice.projects.job_type}` : ''}
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <div>
+                        <p className="text-[10px] font-semibold tracking-widest uppercase text-[#8a8c94] mb-0.5">Total</p>
+                        <p className="font-mono">{invoice.currency} {Number(invoice.total).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-semibold tracking-widest uppercase text-[#8a8c94] mb-0.5">Owing</p>
+                        <p className="font-mono text-[#715a3e]">{invoice.currency} {Number(owing).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Link>
                 )
               })}
-            </tbody>
-          </table>
+            </div>
+            <div className="hidden lg:block">
+              <table className="w-full">
+                <thead className="bg-[#f8f9fa]">
+                  <tr>
+                    <th className="px-6 py-3 text-left label-caps">Invoice #</th>
+                    <th className="px-6 py-3 text-left label-caps">Client</th>
+                    <th className="px-6 py-3 text-left label-caps">Job Type</th>
+                    <th className="px-6 py-3 text-left label-caps">Location</th>
+                    <th className="px-6 py-3 text-right label-caps">Total</th>
+                    <th className="px-6 py-3 text-right label-caps">Owing</th>
+                    <th className="px-6 py-3 text-left label-caps">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map(inv => {
+                    const owing = inv.total - inv.amount_paid
+                    return (
+                      <tr key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)} className="hover:bg-[#f8f9fa] cursor-pointer transition-colors">
+                        <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] data-mono">{inv.invoice_number}</td>
+                        <td className="px-6 py-4 text-sm text-[#5a5c62]">{inv.projects?.clients?.name ?? '—'}</td>
+                        <td className="px-6 py-4 text-sm text-[#8a8c94]">{inv.projects?.job_type ?? '—'}</td>
+                        <td className="px-6 py-4 text-sm text-[#8a8c94] max-w-32 truncate">{inv.projects?.location_address ?? '—'}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(inv.total, inv.currency)}</td>
+                        <td className={`px-6 py-4 text-sm font-medium text-right data-mono ${owing > 0 ? 'text-amber-600' : 'text-gray-400'}`}>{fmt(owing, inv.currency)}</td>
+                        <td className="px-6 py-4">
+                          <StatusChip status={inv.status} />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

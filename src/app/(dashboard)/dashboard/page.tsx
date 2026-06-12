@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   const [{ data: invoices }, { data: projects }, { data: recentInvoices }] = await Promise.all([
-    supabase.from('invoices').select('*, invoice_payments(amount, status)'),
+    supabase.from('invoices').select('*'),
     supabase.from('projects').select('*, clients(name)'),
     supabase
       .from('invoices')
@@ -25,11 +25,8 @@ export default async function DashboardPage() {
   for (const inv of invoices ?? []) {
     if (!statsMap[inv.currency]) statsMap[inv.currency] = { total: 0, paid: 0, owing: 0 }
     statsMap[inv.currency].total += inv.total
-    const paid = ((inv.invoice_payments ?? []) as any[])
-      .filter(p => p.status === 'paid')
-      .reduce((s, p) => s + p.amount, 0)
-    statsMap[inv.currency].paid += paid
-    statsMap[inv.currency].owing += inv.total - paid
+    statsMap[inv.currency].paid += inv.amount_paid
+    statsMap[inv.currency].owing += inv.total - inv.amount_paid
   }
   const stats = Object.entries(statsMap).map(([currency, v]) => ({ currency, ...v }))
 
@@ -44,8 +41,18 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
-          <div className="px-6 py-4 border-b border-gray-100">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">Financial Breakdown</h2>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#715a3e]" />
+                Owing
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#e0e0e3] ring-1 ring-gray-300" />
+                Paid
+              </span>
+            </div>
           </div>
           <div className="p-4">
             <FinancialChart stats={stats} />

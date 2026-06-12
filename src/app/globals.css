@@ -60,3 +60,7 @@ body {
   transition: background-color 0.15s;
 }
 .btn-secondary:hover { background-color: #f8f9fa; }
+
+.leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.85) brightness(1.05);
+}
