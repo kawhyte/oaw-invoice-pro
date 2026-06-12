@@ -1,5 +1,5 @@
 'use client'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createProjectAction, updateProjectAction, deleteProjectAction } from '@/app/(dashboard)/projects/actions'
 import type { Client, Project } from '@/types'
@@ -20,6 +20,8 @@ interface Props {
 export function ProjectDialog({ project, clients, onClose }: Props) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const [clientId, setClientId] = useState(project?.client_id ?? '')
+  const [status, setStatus] = useState(project?.status ?? 'discovery')
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -56,14 +58,16 @@ export function ProjectDialog({ project, clients, onClose }: Props) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Client *</label>
-            <select name="client_id" required defaultValue={project?.client_id} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select name="client_id" required value={clientId} onChange={e => setClientId(e.target.value)}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${clientId === '' ? 'text-gray-400' : 'text-gray-900'}`}>
               <option value="">Select a client</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
-            <select name="status" defaultValue={project?.status ?? 'discovery'} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select name="status" value={status} onChange={e => setStatus(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>

@@ -27,9 +27,10 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   if (!project) notFound()
 
-  const [{ data: notes }, { data: files }] = await Promise.all([
+  const [{ data: notes }, { data: files }, { data: invoices }] = await Promise.all([
     service.from('project_notes').select('*').eq('project_id', project.id).order('created_at', { ascending: true }),
     service.from('project_files').select('*').eq('project_id', project.id).order('uploaded_at', { ascending: false }),
+    service.from('invoices').select('*, invoice_payments(*)').eq('project_id', project.id).order('created_at', { ascending: false }),
   ])
 
   const filesWithUrls = await Promise.all(
@@ -101,6 +102,41 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Payment Summary */}
+        {project.show_financials_on_share && (invoices ?? []).length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-900">Payment Summary</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {(invoices ?? []).map((inv: any) => {
+                const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: inv.currency }).format(n)
+                const STATUS: Record<string, string> = { unpaid: 'Unpaid', partial: 'Partially Paid', paid: 'Paid', overdue: 'Overdue' }
+                return (
+                  <div key={inv.id} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-700">{inv.invoice_number}</span>
+                      <span className="text-gray-500">{STATUS[inv.status]}</span>
+                    </div>
+                    {(inv.invoice_payments ?? []).map((p: any) => (
+                      <div key={p.id} className="flex justify-between text-sm text-gray-600 pl-3">
+                        <span>{p.label}</span>
+                        <span className={p.status === 'paid' ? 'text-green-600' : ''}>
+                          {fmt(p.amount)} {p.status === 'paid' ? '✓' : ''}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between text-sm font-semibold text-gray-900 pt-1 border-t border-gray-100">
+                      <span>Total</span>
+                      <span>{fmt(inv.total)}</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
