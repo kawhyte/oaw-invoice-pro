@@ -1,12 +1,18 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { logout } from '@/app/login/actions'
+import { NavDropdown } from '@/components/NavDropdown'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const { data: bizSettings } = await supabase
+    .from('business_settings')
+    .select('business_name, logo_url')
+    .eq('user_id', user.id)
+    .single()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -20,12 +26,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <Link href="/clients" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Clients</Link>
                 <Link href="/projects" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Projects</Link>
                 <Link href="/invoices" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Invoices</Link>
-                <Link href="/settings" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Settings</Link>
               </div>
             </div>
-            <form action={logout}>
-              <button type="submit" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Sign Out</button>
-            </form>
+            <NavDropdown
+              logoUrl={bizSettings?.logo_url ?? null}
+              businessName={bizSettings?.business_name ?? null}
+            />
           </div>
         </div>
       </nav>
