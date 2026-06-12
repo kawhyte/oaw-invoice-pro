@@ -25,7 +25,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   let buffer: Buffer
   try {
-    buffer = await renderToBuffer(React.createElement(InvoiceDocument, { invoice: invoice as any }))
+    buffer = await renderToBuffer(React.createElement(InvoiceDocument, { invoice: invoice as any }) as React.ReactElement<any>)
   } catch (err) {
     console.error('[email] PDF render failed:', err)
     return Response.json({ error: 'Failed to render PDF', detail: String(err) }, { status: 500 })

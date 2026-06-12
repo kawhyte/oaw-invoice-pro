@@ -1,6 +1,5 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import type { Invoice } from '@/types'
 
 const STATUS_STYLES = {
   unpaid: 'bg-gray-100 text-gray-600',
@@ -10,7 +9,13 @@ const STATUS_STYLES = {
 }
 const STATUS_LABELS = { unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid', overdue: 'Overdue' }
 
-interface InvoiceRow extends Invoice {
+interface InvoiceRow {
+  id: string
+  invoice_number: string
+  total: number
+  currency: string
+  status: keyof typeof STATUS_STYLES
+  created_at: string
   projects: { title: string; clients: { name: string } | null } | null
 }
 

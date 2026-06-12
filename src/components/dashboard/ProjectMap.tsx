@@ -1,10 +1,6 @@
 'use client'
 import dynamic from 'next/dynamic'
-import type { Project } from '@/types'
-
-interface ProjectWithClient extends Project {
-  clients: { name: string } | null
-}
+import type { ProjectWithClient } from './ProjectMapClient'
 
 const MapClient = dynamic(
   () => import('./ProjectMapClient').then(m => m.ProjectMapClient),

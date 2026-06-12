@@ -1,7 +1,5 @@
 'use client'
 import { useEffect, useRef } from 'react'
-import type { Project } from '@/types'
-
 const STATUS_COLORS: Record<string, string> = {
   discovery: '#9ca3af',
   in_progress: '#3b82f6',
@@ -15,7 +13,13 @@ const STATUS_LABELS: Record<string, string> = {
   complete: 'Complete',
 }
 
-interface ProjectWithClient extends Project {
+export interface ProjectWithClient {
+  id: string
+  title: string
+  status: string
+  location_address: string | null
+  lat: number | null
+  lng: number | null
   clients: { name: string } | null
 }
 

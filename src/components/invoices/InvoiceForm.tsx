@@ -2,9 +2,13 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createInvoiceAction } from '@/app/(dashboard)/invoices/actions'
-import type { Client, Project } from '@/types'
+import type { Client } from '@/types'
 
-interface ProjectWithClient extends Project { clients: Client | null }
+interface ProjectWithClient {
+  id: string
+  title: string
+  clients: Client | null
+}
 interface Stage { label: string; amount: string; due_date: string }
 
 export function InvoiceForm({ projects }: { projects: ProjectWithClient[] }) {
