@@ -107,5 +107,6 @@ export interface BusinessSettings {
   email: string | null
   phone: string | null
   address: string | null
+  logo_url: string | null
   updated_at: string
 }

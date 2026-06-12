@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { Invoice, InvoiceLineItem, BusinessSettings } from '@/types'
 
 const S = StyleSheet.create({
@@ -32,6 +32,7 @@ const S = StyleSheet.create({
   notes: { marginTop: 20, fontSize: 9, color: '#6b7280' },
   footer: { position: 'absolute', bottom: 36, left: 48, right: 48, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
   footerText: { fontSize: 8, color: '#9ca3af', textAlign: 'center' },
+  logoImg: { maxWidth: 140, maxHeight: 56, objectFit: 'contain' },
 })
 
 const STATUS_LABELS: Record<string, string> = { draft: 'DRAFT', sent: 'SENT', partial: 'PARTIALLY PAID', paid: 'PAID', overdue: 'OVERDUE' }
@@ -61,7 +62,15 @@ export function InvoiceDocument({ invoice, bizSettings }: Props) {
         {/* Header */}
         <View style={S.row}>
           <View>
-            <Text style={S.logo}>{bizSettings?.business_name ?? 'OAW Invoice Pro'}</Text>
+            {bizSettings?.logo_url
+              ? <Image src={bizSettings.logo_url.split('?')[0]} style={S.logoImg} />
+              : <Text style={S.logo}>{bizSettings?.business_name ?? 'OAW Invoice Pro'}</Text>
+            }
+            {bizSettings?.logo_url && bizSettings?.business_name && (
+              <Text style={{ ...S.bizSub, marginTop: 4, fontFamily: 'Helvetica-Bold', fontSize: 11, color: '#111827' }}>
+                {bizSettings.business_name}
+              </Text>
+            )}
             {bizSettings?.owner_name && <Text style={S.bizSub}>{bizSettings.owner_name}</Text>}
             {bizSettings?.phone && <Text style={S.bizSub}>{bizSettings.phone}</Text>}
             {bizSettings?.email && <Text style={S.bizSub}>{bizSettings.email}</Text>}
