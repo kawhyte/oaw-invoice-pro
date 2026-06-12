@@ -11,16 +11,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
-  const { data: invoice } = await supabase
-    .from('invoices')
-    .select('*, projects(title, clients(name, email)), invoice_payments(*)')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+  const [{ data: invoice }, { data: bizSettings }] = await Promise.all([
+    supabase
+      .from('invoices')
+      .select('*, projects(title, job_type, location_address, clients(name, email)), invoice_line_items(*)')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single(),
+    supabase
+      .from('business_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .single(),
+  ])
 
   if (!invoice) return new Response('Not found', { status: 404 })
 
-  const buffer = await renderToBuffer(React.createElement(InvoiceDocument, { invoice: invoice as any }) as React.ReactElement<any>)
+  const buffer = await renderToBuffer(React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings }) as React.ReactElement<any>)
 
   return new Response(new Uint8Array(buffer), {
     headers: {

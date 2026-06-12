@@ -1,71 +1,101 @@
 'use client'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Invoice } from '@/types'
 
-const STATUS_STYLES = {
-  unpaid: 'bg-gray-100 text-gray-600',
+const STATUS_STYLES: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  sent: 'bg-blue-100 text-blue-700',
   partial: 'bg-amber-100 text-amber-700',
   paid: 'bg-green-100 text-green-700',
   overdue: 'bg-red-100 text-red-700',
 }
-const STATUS_LABELS = { unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid', overdue: 'Overdue' }
+const STATUS_LABELS: Record<string, string> = { draft: 'Draft', sent: 'Sent', partial: 'Partial', paid: 'Paid', overdue: 'Overdue' }
+const ALL_STATUSES = ['draft', 'sent', 'partial', 'paid', 'overdue']
 
-interface InvoiceRow {
-  id: string
-  invoice_number: string
-  total: number
-  currency: string
-  status: keyof typeof STATUS_STYLES
-  created_at: string
-  projects: { title: string; clients: { name: string } | null } | null
+interface InvoiceRow extends Invoice {
+  projects: { title: string; job_type: string | null; location_address: string | null; clients: { name: string } | null } | null
 }
 
 export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
   const router = useRouter()
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+
   const fmt = (amount: number, currency: string) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
 
+  const filtered = invoices.filter(inv => {
+    const q = search.toLowerCase()
+    const matchSearch = !q ||
+      inv.invoice_number.toLowerCase().includes(q) ||
+      (inv.projects?.clients?.name ?? '').toLowerCase().includes(q) ||
+      (inv.projects?.location_address ?? '').toLowerCase().includes(q)
+    const matchStatus = statusFilter === 'all' || inv.status === statusFilter
+    return matchSearch && matchStatus
+  })
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <span className="text-sm font-medium text-gray-700">All Invoices</span>
-        <button onClick={() => router.push('/invoices/new')} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-          + New Invoice
-        </button>
+    <div className="space-y-4">
+      {/* Search + Filter */}
+      <div className="flex gap-3">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search by client, invoice #, or location..."
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="all">All Status</option>
+          {ALL_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+        </select>
       </div>
-      {invoices.length === 0 ? (
-        <div className="px-6 py-12 text-center text-gray-400 text-sm">No invoices yet.</div>
-      ) : (
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Project</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {invoices.map(inv => (
-              <tr key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors">
-                <td className="px-6 py-4 text-sm font-medium text-gray-900">{inv.invoice_number}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{inv.projects?.clients?.name ?? '—'}</td>
-                <td className="px-6 py-4 text-sm text-gray-500">{inv.projects?.title ?? '—'}</td>
-                <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">{fmt(inv.total, inv.currency)}</td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[inv.status]}`}>
-                    {STATUS_LABELS[inv.status]}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  {new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </td>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <span className="text-sm font-medium text-gray-700">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</span>
+          <button onClick={() => router.push('/invoices/new')} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            + New Invoice
+          </button>
+        </div>
+        {filtered.length === 0 ? (
+          <div className="px-6 py-12 text-center text-gray-400 text-sm">
+            {search || statusFilter !== 'all' ? 'No invoices match your search.' : 'No invoices yet.'}
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Owing</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(inv => {
+                const owing = inv.total - inv.amount_paid
+                return (
+                  <tr key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{inv.invoice_number}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{inv.projects?.clients?.name ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{inv.projects?.job_type ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-32 truncate">{inv.projects?.location_address ?? '—'}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">{fmt(inv.total, inv.currency)}</td>
+                    <td className={`px-6 py-4 text-sm font-medium text-right ${owing > 0 ? 'text-amber-600' : 'text-gray-400'}`}>{fmt(owing, inv.currency)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[inv.status]}`}>
+                        {STATUS_LABELS[inv.status]}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }

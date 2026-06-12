@@ -20,6 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <Link href="/clients" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Clients</Link>
                 <Link href="/projects" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Projects</Link>
                 <Link href="/invoices" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Invoices</Link>
+                <Link href="/settings" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">Settings</Link>
               </div>
             </div>
             <form action={logout}>

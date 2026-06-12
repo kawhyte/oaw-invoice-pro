@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createProjectAction, updateProjectAction, deleteProjectAction } from '@/app/(dashboard)/projects/actions'
 import type { Client, Project } from '@/types'
+import { JOB_TYPES } from '@/types'
 
 const STATUS_OPTIONS = [
   { value: 'discovery', label: 'Discovery' },
@@ -69,6 +70,14 @@ export function ProjectDialog({ project, clients, onClose }: Props) {
             <select name="status" value={status} onChange={e => setStatus(e.target.value as any)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
               {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
+            <select name="job_type" defaultValue={project?.job_type ?? ''}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">— Select type —</option>
+              {JOB_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <div>

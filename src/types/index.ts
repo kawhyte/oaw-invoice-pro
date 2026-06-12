@@ -1,7 +1,13 @@
 export type Currency = 'USD' | 'JMD'
 export type ProjectStatus = 'discovery' | 'in_progress' | 'review' | 'complete'
-export type InvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'overdue'
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue'
 export type PaymentStatus = 'pending' | 'paid'
+export type DiscountType = 'none' | 'percentage' | 'fixed'
+
+export const JOB_TYPES = [
+  'Construction', 'Renovation', 'Plumbing', 'Electrical',
+  'Landscaping', 'Painting', 'Roofing', 'General Contracting', 'Other',
+] as const
 
 export interface Client {
   id: string
@@ -23,6 +29,7 @@ export interface Project {
   title: string
   description: string | null
   status: ProjectStatus
+  job_type: string | null
   share_token: string
   show_financials_on_share: boolean
   location_address: string | null
@@ -49,6 +56,16 @@ export interface ProjectFile {
   uploaded_at: string
 }
 
+export interface InvoiceLineItem {
+  id: string
+  invoice_id: string
+  description: string
+  quantity: number
+  unit_price: number
+  amount: number
+  sort_order: number
+}
+
 export interface Invoice {
   id: string
   user_id: string
@@ -56,14 +73,20 @@ export interface Invoice {
   invoice_number: string
   currency: Currency
   subtotal: number
+  discount_type: DiscountType
+  discount_value: number
   gct_rate: number
   gct_amount: number
+  additions_description: string | null
+  additions_amount: number
   total: number
+  amount_paid: number
+  due_date: string | null
   status: InvoiceStatus
   notes: string | null
   created_at: string
   projects?: Project
-  invoice_payments?: InvoicePayment[]
+  invoice_line_items?: InvoiceLineItem[]
 }
 
 export interface InvoicePayment {
@@ -74,4 +97,15 @@ export interface InvoicePayment {
   due_date: string | null
   paid_date: string | null
   status: PaymentStatus
+}
+
+export interface BusinessSettings {
+  id: string
+  user_id: string
+  business_name: string | null
+  owner_name: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  updated_at: string
 }
