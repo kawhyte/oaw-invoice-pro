@@ -12,7 +12,7 @@ export default async function ProjectsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+          <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Projects</h1>
           <p className="text-gray-500 text-sm mt-0.5">{projects?.length ?? 0} projects</p>
         </div>
       </div>

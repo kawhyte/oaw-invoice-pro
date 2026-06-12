@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+        <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Settings</h1>
         <p className="text-gray-500 text-sm mt-0.5">Business details used on invoices</p>
       </div>
       <SettingsForm settings={settings} />

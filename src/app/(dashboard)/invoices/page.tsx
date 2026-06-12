@@ -11,7 +11,7 @@ export default async function InvoicesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
+        <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Invoices</h1>
       </div>
       <InvoiceList invoices={(invoices ?? []) as any} />
     </div>

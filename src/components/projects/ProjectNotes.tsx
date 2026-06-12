@@ -24,16 +24,16 @@ export function ProjectNotes({ projectId, notes }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
+    <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
       <div className="px-6 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-900">Progress Notes</h2>
       </div>
       <div className="p-6 space-y-4">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Add a progress update..." rows={2}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className="flex-1 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white placeholder:text-[#8a8c94] resize-none focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
           <button type="submit" disabled={isPending || !content.trim()}
-            className="px-4 py-2 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50 self-end">
+            className="px-4 py-2 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 self-end">
             Add
           </button>
         </form>

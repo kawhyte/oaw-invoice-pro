@@ -26,14 +26,14 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials }: Props)
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
+    <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
       <div className="px-6 py-4 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-900">Client Share Link</h2>
       </div>
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-2">
           <input readOnly value={shareUrl}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 bg-gray-50 focus:outline-none" />
+            className="flex-1 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#5a5c62] bg-[#f8f9fa] focus:outline-none" />
           <button onClick={handleCopy}
             className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors shrink-0">
             {copied ? '✓ Copied' : 'Copy'}
@@ -47,7 +47,7 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials }: Props)
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <span className="text-sm text-gray-600">Show financials to client</span>
             <button type="button" role="switch" aria-checked={showFinancials} onClick={handleToggle} disabled={isPending}
-              className={`relative w-9 h-5 rounded-full transition-colors disabled:opacity-50 ${showFinancials ? 'bg-emerald-700' : 'bg-gray-300'}`}>
+              className={`relative w-9 h-5 rounded-full transition-colors disabled:opacity-50 ${showFinancials ? 'bg-[#715a3e]' : 'bg-gray-300'}`}>
               <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${showFinancials ? 'translate-x-4' : ''}`} />
             </button>
           </label>

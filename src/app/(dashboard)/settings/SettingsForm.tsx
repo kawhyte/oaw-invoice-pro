@@ -59,7 +59,7 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 max-w-lg">
+    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 space-y-5 max-w-lg">
       <div>
         <h2 className="text-sm font-semibold text-gray-900">Business Information</h2>
         <p className="text-xs text-gray-500 mt-0.5">This information appears on all generated invoices.</p>
@@ -79,7 +79,7 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
           <div className="flex flex-col gap-1.5">
             <input ref={fileInputRef} id="logo-upload" type="file" accept="image/png,image/jpeg,image/jpg" onChange={handleLogoUpload} className="hidden" />
             <label htmlFor="logo-upload"
-              className={`inline-flex px-3 py-1.5 text-sm border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              className={`inline-flex px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
               {logoUploading ? 'Uploading...' : logoUrl ? 'Change Logo' : 'Upload Logo'}
             </label>
             {logoUrl && (
@@ -105,36 +105,36 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
         <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
         <input name="business_name" defaultValue={settings?.business_name ?? ''}
           placeholder="e.g. OAW Construction Ltd"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
         <input name="owner_name" defaultValue={settings?.owner_name ?? ''}
           placeholder="e.g. Omar A. Whyte"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
           <input name="email" type="email" defaultValue={settings?.email ?? ''}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
           <input name="phone" defaultValue={settings?.phone ?? ''}
             placeholder="+1 876 000 0000"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
         </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
         <input name="address" defaultValue={settings?.address ?? ''}
           placeholder="123 Main St, Kingston, Jamaica"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
       </div>
 
       <button type="submit" disabled={isPending}
-        className="px-6 py-2 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50 font-medium">
+        className="px-6 py-2 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 font-medium">
         {isPending ? 'Saving...' : 'Save Settings'}
       </button>
     </form>

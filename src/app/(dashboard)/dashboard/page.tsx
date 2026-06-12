@@ -36,14 +36,14 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">Overview of your projects and billing</p>
       </div>
 
       <StatsCards stats={stats} invoiceCount={invoices?.length ?? 0} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200">
+        <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900">Financial Breakdown</h2>
           </div>
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900">Project Locations</h2>
           </div>

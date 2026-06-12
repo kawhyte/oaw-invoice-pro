@@ -21,8 +21,8 @@ export function NavLinks() {
             href={link.href}
             className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
               active
-                ? 'bg-emerald-800 text-white font-medium'
-                : 'text-emerald-200 hover:text-white hover:bg-emerald-800'
+                ? 'text-white bg-[#715a3e]/20 border-l-2 border-[#715a3e] font-medium'
+                : 'text-[#9aa0a9] hover:text-white hover:bg-white/5'
             }`}
           >
             {link.label}

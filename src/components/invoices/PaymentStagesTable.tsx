@@ -31,12 +31,13 @@ export function PaymentStagesTable({ invoiceId, payments, currency }: Props) {
         {payments.map(p => (
           <tr key={p.id}>
             <td className="px-6 py-4 text-sm text-gray-900">{p.label}</td>
-            <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right">{fmt(p.amount)}</td>
+            <td className="px-6 py-4 text-sm font-medium text-gray-900 text-right data-mono">{fmt(p.amount)}</td>
             <td className="px-6 py-4 text-sm text-gray-500">
               {p.due_date ? new Date(p.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
             </td>
             <td className="px-6 py-4">
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${p.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium label-caps"
+                style={p.status === 'paid' ? { backgroundColor: '#dde8dd', color: '#2a5130' } : { backgroundColor: '#e7e8e9', color: '#44474a' }}>
                 {p.status === 'paid'
                   ? `Paid${p.paid_date ? ' · ' + new Date(p.paid_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`
                   : 'Pending'}
@@ -44,7 +45,7 @@ export function PaymentStagesTable({ invoiceId, payments, currency }: Props) {
             </td>
             <td className="px-6 py-4 text-right">
               <button onClick={() => toggle(p)} disabled={isPending}
-                className={`text-xs font-medium disabled:opacity-50 ${p.status === 'paid' ? 'text-gray-400 hover:text-gray-600' : 'text-emerald-700 hover:text-emerald-800'}`}>
+                className={`text-xs font-medium disabled:opacity-50 ${p.status === 'paid' ? 'text-gray-400 hover:text-gray-600' : 'text-[#715a3e] hover:text-[#8b7355]'}`}>
                 {p.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}
               </button>
             </td>

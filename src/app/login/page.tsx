@@ -7,7 +7,7 @@ export default function LoginPage({
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="w-full max-w-md p-8 bg-white rounded-xl border border-[#e0e0e3] shadow-card">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">OAW Invoice Pro</h1>
           <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
@@ -22,7 +22,7 @@ export default function LoginPage({
               name="email"
               type="email"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]"
             />
           </div>
           <div>
@@ -34,12 +34,12 @@ export default function LoginPage({
               name="password"
               type="password"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]"
             />
           </div>
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 font-medium text-sm transition-colors"
+            className="w-full py-2 px-4 bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] font-medium text-sm transition-colors"
           >
             Sign In
           </button>

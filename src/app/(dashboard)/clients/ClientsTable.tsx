@@ -8,10 +8,10 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
 
   return (
     <>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <span className="text-sm font-medium text-gray-700">All Clients</span>
-          <button onClick={() => setDialog({ open: true })} className="px-3 py-1.5 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition-colors">
+          <button onClick={() => setDialog({ open: true })} className="px-3 py-1.5 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] transition-colors">
             + New Client
           </button>
         </div>

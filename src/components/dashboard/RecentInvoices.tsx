@@ -1,19 +1,12 @@
 import Link from 'next/link'
-
-const STATUS_STYLES = {
-  unpaid: 'bg-gray-100 text-gray-600',
-  partial: 'bg-amber-100 text-amber-700',
-  paid: 'bg-green-100 text-green-700',
-  overdue: 'bg-red-100 text-red-700',
-}
-const STATUS_LABELS = { unpaid: 'Unpaid', partial: 'Partial', paid: 'Paid', overdue: 'Overdue' }
+import { StatusChip } from '@/components/ui/StatusChip'
 
 interface InvoiceRow {
   id: string
   invoice_number: string
   total: number
   currency: string
-  status: keyof typeof STATUS_STYLES
+  status: string
   created_at: string
   projects: { title: string; clients: { name: string } | null } | null
 }
@@ -23,10 +16,10 @@ export function RecentInvoices({ invoices }: { invoices: InvoiceRow[] }) {
     new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">Recent Invoices</h2>
-        <Link href="/invoices" className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all →</Link>
+        <h2 className="text-sm font-semibold text-[#1a1c1e]">Recent Invoices</h2>
+        <Link href="/invoices" className="text-sm text-[#715a3e] hover:text-[#8b7355] font-medium">View all →</Link>
       </div>
       {invoices.length === 0 ? (
         <div className="px-6 py-8 text-center text-gray-400 text-sm">No invoices yet.</div>
@@ -34,18 +27,16 @@ export function RecentInvoices({ invoices }: { invoices: InvoiceRow[] }) {
         <div className="divide-y divide-gray-100">
           {invoices.map(inv => (
             <Link key={inv.id} href={`/invoices/${inv.id}`}
-              className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
+              className="flex items-center justify-between px-6 py-4 hover:bg-[#f8f9fa] transition-colors">
               <div>
-                <p className="text-sm font-medium text-gray-900">{inv.invoice_number}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm font-medium text-[#1a1c1e]">{inv.invoice_number}</p>
+                <p className="text-xs text-[#8a8c94] mt-0.5">
                   {inv.projects?.clients?.name ?? '—'} · {new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <p className="text-sm font-medium text-gray-900">{fmt(inv.total, inv.currency)}</p>
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[inv.status]}`}>
-                  {STATUS_LABELS[inv.status]}
-                </span>
+                <p className="text-sm font-medium text-[#1a1c1e] data-mono">{fmt(inv.total, inv.currency)}</p>
+                <StatusChip status={inv.status} />
               </div>
             </Link>
           ))}

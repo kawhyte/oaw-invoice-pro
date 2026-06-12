@@ -12,7 +12,7 @@ export default async function ClientsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
+          <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Clients</h1>
           <p className="text-gray-500 text-sm mt-0.5">{clients?.length ?? 0} clients</p>
         </div>
       </div>

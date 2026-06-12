@@ -10,6 +10,8 @@ interface LineItem { tempId: string; description: string; quantity: string; unit
 
 const newItem = (): LineItem => ({ tempId: crypto.randomUUID(), description: '', quantity: '1', unit_price: '' })
 
+const INPUT = 'w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]'
+
 export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithClient[]; bizSettings: BusinessSettings | null }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -40,7 +42,6 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
     setLineItems(prev => prev.map(i => i.tempId === tempId ? { ...i, [field]: value } : i))
   }
 
-  // Calculations
   const subtotal = lineItems.reduce((sum, i) => sum + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0)
   const discountNum = parseFloat(discountValue) || 0
   const discountAmount = discountType === 'percentage' ? subtotal * (discountNum / 100) : discountType === 'fixed' ? discountNum : 0
@@ -87,12 +88,12 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
 
       {/* Business info banner */}
       {bizSettings?.business_name ? (
-        <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-5 py-3 flex items-center justify-between">
+        <div className="bg-[#f5ede4] border border-[#715a3e]/20 rounded-xl px-5 py-3 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-emerald-900">{bizSettings.business_name}</p>
-            <p className="text-xs text-emerald-700">{[bizSettings.phone, bizSettings.email].filter(Boolean).join(' · ')}</p>
+            <p className="text-sm font-medium text-[#1a1c1e]">{bizSettings.business_name}</p>
+            <p className="text-xs text-[#715a3e]">{[bizSettings.phone, bizSettings.email].filter(Boolean).join(' · ')}</p>
           </div>
-          <a href="/settings" className="text-xs text-emerald-700 hover:text-emerald-800 underline">Edit</a>
+          <a href="/settings" className="text-xs text-[#715a3e] hover:text-[#8b7355] underline">Edit</a>
         </div>
       ) : (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
@@ -101,37 +102,34 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
       )}
 
       {/* Project + Invoice details */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wider text-gray-500">Invoice Details</h2>
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 space-y-4">
+        <h2 className="label-caps">Invoice Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project *</label>
-            <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <label className="block text-sm font-medium text-[#5a5c62] mb-1">Project *</label>
+            <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} required className={INPUT}>
               <option value="">Select a project</option>
               {projects.map(p => <option key={p.id} value={p.id}>{p.title} — {p.clients?.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            <label className="block text-sm font-medium text-[#5a5c62] mb-1">Due Date</label>
+            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={INPUT} />
           </div>
         </div>
 
         {selectedProject && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-gray-50 rounded-lg p-3">
-            <div><span className="text-gray-500">Client:</span> <span className="font-medium text-gray-900">{selectedProject.clients?.name}</span></div>
-            {selectedProject.job_type && <div><span className="text-gray-500">Job Type:</span> <span className="font-medium text-gray-900">{selectedProject.job_type}</span></div>}
-            {selectedProject.location_address && <div><span className="text-gray-500">Location:</span> <span className="font-medium text-gray-900">{selectedProject.location_address}</span></div>}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-[#f8f9fa] rounded-lg p-3">
+            <div><span className="text-[#8a8c94]">Client:</span> <span className="font-medium text-[#1a1c1e]">{selectedProject.clients?.name}</span></div>
+            {selectedProject.job_type && <div><span className="text-[#8a8c94]">Job Type:</span> <span className="font-medium text-[#1a1c1e]">{selectedProject.job_type}</span></div>}
+            {selectedProject.location_address && <div><span className="text-[#8a8c94]">Location:</span> <span className="font-medium text-[#1a1c1e]">{selectedProject.location_address}</span></div>}
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-            <select value={currency} onChange={e => { setCurrency(e.target.value as 'JMD' | 'USD'); setUseGct(e.target.value === 'JMD') }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <label className="block text-sm font-medium text-[#5a5c62] mb-1">Currency</label>
+            <select value={currency} onChange={e => { setCurrency(e.target.value as 'JMD' | 'USD'); setUseGct(e.target.value === 'JMD') }} className={INPUT}>
               <option value="JMD">JMD</option>
               <option value="USD">USD</option>
             </select>
@@ -140,10 +138,10 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
             <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <button type="button" onClick={() => setUseGct(v => !v)}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${useGct ? 'bg-emerald-700' : 'bg-gray-300'}`}>
+                  className={`relative w-9 h-5 rounded-full transition-colors ${useGct ? 'bg-[#715a3e]' : 'bg-gray-300'}`}>
                   <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${useGct ? 'translate-x-4' : ''}`} />
                 </button>
-                <span className="text-sm text-gray-600">Apply GCT (15%)</span>
+                <span className="text-sm text-[#5a5c62]">Apply GCT (15%)</span>
               </label>
             </div>
           )}
@@ -151,10 +149,10 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
       </div>
 
       {/* Line Items */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Line Items</h2>
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 space-y-3">
+        <h2 className="label-caps">Line Items</h2>
         <div className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
+          <div className="grid grid-cols-12 gap-2 text-xs font-medium text-[#8a8c94] px-1">
             <span className="col-span-5">Description</span>
             <span className="col-span-2 text-center">Qty</span>
             <span className="col-span-3">Unit Price</span>
@@ -167,13 +165,13 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
               <div key={item.tempId} className="grid grid-cols-12 gap-2 items-center">
                 <input value={item.description} onChange={e => updateItem(item.tempId, 'description', e.target.value)}
                   placeholder="Description of work"
-                  className="col-span-5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  className={`col-span-5 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]`} />
                 <input type="number" min="0.01" step="0.01" value={item.quantity} onChange={e => updateItem(item.tempId, 'quantity', e.target.value)}
-                  className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-center focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                  className="col-span-2 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white text-center data-mono focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
                 <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => updateItem(item.tempId, 'unit_price', e.target.value)}
                   placeholder="0.00"
-                  className="col-span-3 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                <span className="col-span-1 text-sm text-gray-700 text-right font-medium">{fmt(amt)}</span>
+                  className="col-span-3 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white data-mono focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
+                <span className="col-span-1 text-sm text-[#5a5c62] text-right font-medium data-mono">{fmt(amt)}</span>
                 <button type="button" onClick={() => setLineItems(p => p.filter(i => i.tempId !== item.tempId))}
                   disabled={lineItems.length <= 1} className="col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-20 text-lg leading-none text-center">×</button>
               </div>
@@ -181,15 +179,14 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
           })}
         </div>
         <button type="button" onClick={() => setLineItems(p => [...p, newItem()])}
-          className="text-sm text-emerald-700 hover:text-emerald-800 font-medium">+ Add Line Item</button>
+          className="text-sm text-[#715a3e] hover:text-[#8b7355] font-medium">+ Add Line Item</button>
       </div>
 
       {/* Discount + Additions */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Discount</h2>
-          <select value={discountType} onChange={e => { setDiscountType(e.target.value as DiscountType); setDiscountValue('') }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <h2 className="label-caps">Discount</h2>
+          <select value={discountType} onChange={e => { setDiscountType(e.target.value as DiscountType); setDiscountValue('') }} className={INPUT}>
             <option value="none">No Discount</option>
             <option value="percentage">Percentage (%)</option>
             <option value="fixed">Fixed Amount ({currency})</option>
@@ -197,51 +194,48 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
           {discountType !== 'none' && (
             <input type="number" min="0" step="0.01" value={discountValue} onChange={e => setDiscountValue(e.target.value)}
               placeholder={discountType === 'percentage' ? 'e.g. 10' : '0.00'}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              className={INPUT} />
           )}
         </div>
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Additions</h2>
+          <h2 className="label-caps">Additions</h2>
           <input value={additionsDesc} onChange={e => setAdditionsDesc(e.target.value)}
-            placeholder="e.g. Rush fee, Materials"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            placeholder="e.g. Rush fee, Materials" className={INPUT} />
           <input type="number" min="0" step="0.01" value={additionsAmount} onChange={e => setAdditionsAmount(e.target.value)}
-            placeholder={`Amount (${currency})`}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            placeholder={`Amount (${currency})`} className={INPUT} />
         </div>
       </div>
 
       {/* Notes + Amount Paid */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <label className="block text-sm font-medium text-[#5a5c62] mb-1">Notes</label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Payment terms, bank details..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className={`${INPUT} resize-none`} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Amount Already Paid ({currency})</label>
+          <label className="block text-sm font-medium text-[#5a5c62] mb-1">Amount Already Paid ({currency})</label>
           <input type="number" min="0" step="0.01" value={amountPaid} onChange={e => setAmountPaid(e.target.value)}
-            placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <p className="text-xs text-gray-400 mt-1">Leave 0 if nothing has been paid yet</p>
+            placeholder="0.00" className={INPUT} />
+          <p className="text-xs text-[#8a8c94] mt-1">Leave 0 if nothing has been paid yet</p>
         </div>
       </div>
 
       {/* Summary */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-2 text-sm">
-        <div className="flex justify-between text-gray-600"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-        {discountAmount > 0 && <div className="flex justify-between text-gray-600"><span>Discount</span><span>- {fmt(discountAmount)}</span></div>}
-        {useGct && <div className="flex justify-between text-gray-600"><span>GCT (15%)</span><span>{fmt(gctAmount)}</span></div>}
-        {additionsNum > 0 && <div className="flex justify-between text-gray-600"><span>{additionsDesc || 'Additions'}</span><span>+ {fmt(additionsNum)}</span></div>}
-        <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-200"><span>Total</span><span>{fmt(total)}</span></div>
-        {amountPaidNum > 0 && <div className="flex justify-between text-green-600"><span>Paid</span><span>{fmt(amountPaidNum)}</span></div>}
-        {amountPaidNum > 0 && <div className="flex justify-between font-semibold text-amber-600"><span>Owing</span><span>{fmt(owing)}</span></div>}
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 space-y-2 text-sm">
+        <div className="flex justify-between text-[#5a5c62]"><span>Subtotal</span><span className="data-mono">{fmt(subtotal)}</span></div>
+        {discountAmount > 0 && <div className="flex justify-between text-[#5a5c62]"><span>Discount</span><span className="data-mono">- {fmt(discountAmount)}</span></div>}
+        {useGct && <div className="flex justify-between text-[#5a5c62]"><span>GCT (15%)</span><span className="data-mono">{fmt(gctAmount)}</span></div>}
+        {additionsNum > 0 && <div className="flex justify-between text-[#5a5c62]"><span>{additionsDesc || 'Additions'}</span><span className="data-mono">+ {fmt(additionsNum)}</span></div>}
+        <div className="flex justify-between font-bold text-[#1a1c1e] text-base pt-2 border-t border-[#e0e0e3]"><span>Total</span><span className="data-mono">{fmt(total)}</span></div>
+        {amountPaidNum > 0 && <div className="flex justify-between text-[#2a5130]"><span>Paid</span><span className="data-mono">{fmt(amountPaidNum)}</span></div>}
+        {amountPaidNum > 0 && <div className="flex justify-between font-semibold text-amber-600"><span>Owing</span><span className="data-mono">{fmt(owing)}</span></div>}
       </div>
 
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => router.back()} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+        <button type="button" onClick={() => router.back()} className="px-4 py-2 text-sm text-[#5a5c62] hover:text-[#1a1c1e]">Cancel</button>
         <button type="submit" disabled={isPending || !selectedProjectId}
-          className="px-6 py-2 text-sm bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 disabled:opacity-50 font-medium">
+          className="px-6 py-2 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 font-medium">
           {isPending ? 'Creating...' : 'Create Invoice'}
         </button>
       </div>

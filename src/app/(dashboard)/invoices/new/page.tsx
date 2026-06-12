@@ -15,7 +15,7 @@ export default async function NewInvoicePage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">New Invoice</h1>
+        <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">New Invoice</h1>
       </div>
       <InvoiceForm projects={(projects ?? []) as any} bizSettings={bizSettings} />
     </div>
