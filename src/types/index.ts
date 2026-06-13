@@ -6,7 +6,9 @@ export type DiscountType = 'none' | 'percentage' | 'fixed'
 
 export const JOB_TYPES = [
   'Construction', 'Renovation', 'Plumbing', 'Electrical',
-  'Landscaping', 'Painting', 'Roofing', 'General Contracting', 'Other',
+  'Landscaping', 'Painting', 'Roofing', 'General Contracting',
+  'Design', 'Working Drawings', 'Measured Survey', 'Presentation',
+  'Other',
 ] as const
 
 export interface Client {
