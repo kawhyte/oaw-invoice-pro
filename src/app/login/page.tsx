@@ -9,8 +9,8 @@ export default function LoginPage({
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
       <div className="w-full max-w-md p-8 bg-white rounded-xl border border-[#e0e0e3] shadow-card">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">OAW Invoice Pro</h1>
-          <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-gray-900">OW Studio</h1>
+          <p className="text-[#8a8c94] mt-1 text-sm">Project & invoice management</p>
         </div>
         <form action={login} className="space-y-4">
           <div>

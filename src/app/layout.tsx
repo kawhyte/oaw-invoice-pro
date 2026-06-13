@@ -24,12 +24,12 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'OAW Invoice Pro',
+  title: 'OW Studio',
   description: 'Professional invoice and project management for contractors',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'OAW Invoice',
+    title: 'OW Studio',
   },
   formatDetection: { telephone: false },
 }

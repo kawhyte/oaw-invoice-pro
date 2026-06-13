@@ -34,7 +34,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     <div className="min-h-screen bg-[#f8f9fa]">
       <header className="bg-[#1a1c1e]">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="font-semibold text-white text-sm">OAW Invoice Pro</span>
+          <span className="font-semibold text-white text-sm">OW Studio</span>
           <StatusChip status={project.status} />
         </div>
       </header>
@@ -129,7 +129,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       </main>
 
       <footer className="max-w-3xl mx-auto px-4 py-8 text-center text-xs text-[#8a8c94]">
-        This is a secure project link shared by OAW Invoice Pro
+        This is a secure project link shared by OW Studio
       </footer>
     </div>
   )

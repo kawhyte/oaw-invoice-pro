@@ -1,4 +1,4 @@
-const CACHE = 'oaw-v1'
+const CACHE = 'ow-studio-v1'
 const OFFLINE_URL = '/offline'
 
 self.addEventListener('install', e => {

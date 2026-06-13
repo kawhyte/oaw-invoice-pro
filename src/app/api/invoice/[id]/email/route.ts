@@ -29,7 +29,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const fmt = (n: number, c: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency: c }).format(n)
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const fromName = bizSettings?.business_name ?? 'OAW Invoice Pro'
+  const fromName = bizSettings?.business_name ?? 'OW Studio'
 
   const { error } = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev',

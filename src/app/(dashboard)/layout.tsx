@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { NavLinks } from '@/components/NavLinks'
@@ -16,26 +17,43 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .single()
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <nav className="hidden lg:block bg-[#1a1c1e] sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-6">
-              <span className="font-semibold text-white text-sm tracking-tight">
-                OAW Invoice Pro
-              </span>
-              <NavLinks />
-            </div>
-            <NavDropdown
-              logoUrl={bizSettings?.logo_url ?? null}
-              businessName={bizSettings?.business_name ?? null}
-            />
-          </div>
+    <div className="min-h-screen bg-[#f8f9fa] flex">
+      {/* Sidebar — desktop/tablet-landscape only */}
+      <aside className="hidden lg:flex flex-col w-56 bg-[#1a1c1e] fixed inset-y-0 left-0 z-30">
+        <div className="px-4 py-5 border-b border-white/10">
+          <Link href="/dashboard" className="text-white font-semibold text-sm tracking-wide">
+            OW Studio
+          </Link>
         </div>
-      </nav>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-20 lg:pb-8">
-        {children}
-      </main>
+        <nav className="flex-1 px-2 py-4">
+          <NavLinks />
+        </nav>
+        <div className="px-3 py-4 border-t border-white/10">
+          <NavDropdown
+            logoUrl={bizSettings?.logo_url ?? null}
+            businessName={bizSettings?.business_name ?? null}
+          />
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 lg:ml-56 flex flex-col min-h-screen">
+        {/* Mobile top bar */}
+        <header className="lg:hidden bg-[#1a1c1e] px-4 h-12 flex items-center justify-between sticky top-0 z-20">
+          <Link href="/dashboard" className="text-white font-semibold text-sm tracking-wide">
+            OW Studio
+          </Link>
+          <NavDropdown
+            logoUrl={bizSettings?.logo_url ?? null}
+            businessName={bizSettings?.business_name ?? null}
+          />
+        </header>
+
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 lg:pb-8">
+          {children}
+        </main>
+      </div>
+
       <MobileNav />
     </div>
   )

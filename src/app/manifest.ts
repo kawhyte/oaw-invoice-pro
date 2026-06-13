@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'OAW Invoice Pro',
-    short_name: 'OAW Invoice',
+    name: 'OW Studio',
+    short_name: 'OW Studio',
     description: 'Professional invoice and project management for contractors',
     start_url: '/dashboard',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#2563eb',
+    theme_color: '#1a1c1e',
     orientation: 'portrait',
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

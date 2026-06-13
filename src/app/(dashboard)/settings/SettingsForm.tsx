@@ -104,7 +104,7 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Business Name</label>
         <input name="business_name" defaultValue={settings?.business_name ?? ''}
-          placeholder="e.g. OAW Construction Ltd"
+          placeholder="e.g. OW Construction Ltd"
           className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
       </div>
       <div>

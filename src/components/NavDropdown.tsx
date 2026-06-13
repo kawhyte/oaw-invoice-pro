@@ -21,7 +21,7 @@ export function NavDropdown({ logoUrl, businessName }: Props) {
   }, [])
 
   const initials = businessName
-    ?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? 'OA'
+    ?.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() ?? 'OW'
 
   return (
     <div ref={ref} className="relative">
