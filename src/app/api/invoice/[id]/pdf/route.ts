@@ -5,7 +5,7 @@ import React from 'react'
 
 export const runtime = 'nodejs'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -24,10 +24,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null }) as any
   )
 
+  const url = new URL(request.url)
+  const isPreview = url.searchParams.get('preview') === 'true'
+
   return new Response(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${invoice.invoice_number}.pdf"`,
+      'Content-Disposition': isPreview
+        ? `inline; filename="invoice-${invoice.invoice_number}.pdf"`
+        : `attachment; filename="${invoice.invoice_number}.pdf"`,
     },
   })
 }
