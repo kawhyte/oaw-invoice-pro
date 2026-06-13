@@ -42,7 +42,17 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             {project?.location_address ? ` · ${project.location_address}` : ''}
           </p>
         </div>
-        <InvoiceActions invoiceId={id} clientEmail={client?.email ?? null} status={invoice.status} />
+        <div className="flex items-center gap-2 flex-wrap">
+          {invoice.status !== 'paid' && (
+            <Link
+              href={`/invoices/${id}/edit`}
+              className="px-4 py-2 text-sm font-medium border border-[#e0e0e3] text-[#1a1c1e] rounded-lg hover:bg-[#f8f9fa] transition-colors"
+            >
+              Edit
+            </Link>
+          )}
+          <InvoiceActions invoiceId={id} invoiceNumber={invoice.invoice_number} clientEmail={client?.email ?? null} status={invoice.status} />
+        </div>
       </div>
 
       {/* Line Items */}

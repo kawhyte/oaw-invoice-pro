@@ -1,6 +1,7 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import type { InvoiceStatus, DiscountType } from '@/types'
 
 function calcTotal(
@@ -113,6 +114,63 @@ export async function markSentAction(invoiceId: string) {
   await supabase.from('invoices').update({ status: 'sent' }).eq('id', invoiceId).eq('user_id', user.id).eq('status', 'draft')
   revalidatePath(`/invoices/${invoiceId}`)
   revalidatePath('/invoices')
+}
+
+export async function updateInvoiceAction(invoiceId: string, formData: FormData): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const { data: current } = await supabase.from('invoices').select('status').eq('id', invoiceId).eq('user_id', user.id).single()
+  if (!current) throw new Error('Not found')
+  const wasSent = current.status !== 'draft'
+
+  const lineItems = JSON.parse(formData.get('line_items') as string) as { description: string; quantity: number; unit_price: number }[]
+  const currency = formData.get('currency') as string
+  const discountType = (formData.get('discount_type') as DiscountType) || 'none'
+  const discountValue = parseFloat(formData.get('discount_value') as string) || 0
+  const gctRate = formData.get('use_gct') === 'true' ? 0.15 : 0
+  const additionsAmount = parseFloat(formData.get('additions_amount') as string) || 0
+  const amountPaid = parseFloat(formData.get('amount_paid') as string) || 0
+  const dueDate = (formData.get('due_date') as string) || null
+
+  const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
+  const { gctAmount, total } = calcTotal(subtotal, discountType, discountValue, gctRate, additionsAmount)
+  const status = calcStatus(amountPaid, total, dueDate, wasSent)
+
+  await supabase.from('invoice_line_items').delete().eq('invoice_id', invoiceId)
+  if (lineItems.length > 0) {
+    await supabase.from('invoice_line_items').insert(
+      lineItems.map((item, i) => ({
+        invoice_id: invoiceId,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        amount: item.quantity * item.unit_price,
+        sort_order: i,
+      }))
+    )
+  }
+
+  await supabase.from('invoices').update({
+    currency,
+    discount_type: discountType,
+    discount_value: discountValue,
+    gct_rate: gctRate,
+    gct_amount: gctAmount,
+    additions_description: (formData.get('additions_description') as string) || null,
+    additions_amount: additionsAmount,
+    subtotal,
+    total,
+    amount_paid: amountPaid,
+    due_date: dueDate || null,
+    status,
+    notes: (formData.get('notes') as string) || null,
+  }).eq('id', invoiceId).eq('user_id', user.id)
+
+  revalidatePath(`/invoices/${invoiceId}`)
+  revalidatePath('/invoices')
+  redirect(`/invoices/${invoiceId}`)
 }
 
 export async function deleteInvoiceAction(id: string) {

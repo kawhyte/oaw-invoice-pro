@@ -1,9 +1,9 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { createInvoiceAction } from '@/app/(dashboard)/invoices/actions'
-import type { Client, Project, BusinessSettings, DiscountType } from '@/types'
-import { JOB_TYPES } from '@/types'
+import Link from 'next/link'
+import { createInvoiceAction, updateInvoiceAction } from '@/app/(dashboard)/invoices/actions'
+import type { Client, Project, BusinessSettings, DiscountType, Invoice, InvoiceLineItem } from '@/types'
 
 interface ProjectWithClient extends Omit<Project, 'clients'> { clients: Client | null }
 interface LineItem { tempId: string; description: string; quantity: string; unit_price: string }
@@ -12,22 +12,63 @@ const newItem = (): LineItem => ({ tempId: crypto.randomUUID(), description: '',
 
 const INPUT = 'w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]'
 
-export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithClient[]; bizSettings: BusinessSettings | null }) {
+interface InvoiceFormProps {
+  projects: ProjectWithClient[]
+  bizSettings: BusinessSettings | null
+  invoice?: Invoice & { invoice_line_items?: InvoiceLineItem[] }
+  editMode?: boolean
+}
+
+export function InvoiceForm({ projects, bizSettings, invoice, editMode }: InvoiceFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [selectedProjectId, setSelectedProjectId] = useState('')
-  const [currency, setCurrency] = useState<'JMD' | 'USD'>('JMD')
-  const [useGct, setUseGct] = useState(false)
-  const [dueDate, setDueDate] = useState('')
-  const [lineItems, setLineItems] = useState<LineItem[]>([newItem()])
-  const [discountType, setDiscountType] = useState<DiscountType>('none')
-  const [discountValue, setDiscountValue] = useState('')
-  const [additionsDesc, setAdditionsDesc] = useState('')
-  const [additionsAmount, setAdditionsAmount] = useState('')
-  const [amountPaid, setAmountPaid] = useState('')
-  const [notes, setNotes] = useState('')
+
+  const [selectedProjectId, setSelectedProjectId] = useState(() =>
+    editMode && invoice ? invoice.project_id : ''
+  )
+  const [currency, setCurrency] = useState<'JMD' | 'USD'>(() =>
+    editMode && invoice ? invoice.currency : 'JMD'
+  )
+  const [useGct, setUseGct] = useState(() =>
+    editMode && invoice ? invoice.gct_rate > 0 : false
+  )
+  const [dueDate, setDueDate] = useState(() =>
+    editMode && invoice?.due_date ? invoice.due_date : ''
+  )
+  const [lineItems, setLineItems] = useState<LineItem[]>(() => {
+    if (editMode && invoice?.invoice_line_items && invoice.invoice_line_items.length > 0) {
+      return [...invoice.invoice_line_items]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(item => ({
+          tempId: crypto.randomUUID(),
+          description: item.description,
+          quantity: String(item.quantity),
+          unit_price: String(item.unit_price),
+        }))
+    }
+    return [newItem()]
+  })
+  const [discountType, setDiscountType] = useState<DiscountType>(() =>
+    editMode && invoice?.discount_type ? invoice.discount_type : 'none'
+  )
+  const [discountValue, setDiscountValue] = useState(() =>
+    editMode && invoice?.discount_value ? String(invoice.discount_value) : ''
+  )
+  const [additionsDesc, setAdditionsDesc] = useState(() =>
+    editMode && invoice?.additions_description ? invoice.additions_description : ''
+  )
+  const [additionsAmount, setAdditionsAmount] = useState(() =>
+    editMode && invoice?.additions_amount ? String(invoice.additions_amount) : ''
+  )
+  const [amountPaid, setAmountPaid] = useState(() =>
+    editMode && invoice?.amount_paid ? String(invoice.amount_paid) : ''
+  )
+  const [notes, setNotes] = useState(() =>
+    editMode && invoice?.notes ? invoice.notes : ''
+  )
 
   const selectedProject = projects.find(p => p.id === selectedProjectId)
+  const invoiceProject = editMode ? (invoice as any)?.projects : null
 
   function handleProjectChange(id: string) {
     setSelectedProjectId(id)
@@ -56,7 +97,7 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedProjectId) return
+    if (!editMode && !selectedProjectId) return
     const validItems = lineItems.filter(i => i.description.trim() && parseFloat(i.unit_price) > 0)
     if (!validItems.length) return
 
@@ -77,10 +118,16 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
       unit_price: parseFloat(i.unit_price) || 0,
     }))))
 
-    startTransition(async () => {
-      const id = await createInvoiceAction(fd)
-      router.push(`/invoices/${id}`)
-    })
+    if (editMode && invoice) {
+      startTransition(async () => {
+        await updateInvoiceAction(invoice.id, fd)
+      })
+    } else {
+      startTransition(async () => {
+        const id = await createInvoiceAction(fd)
+        router.push(`/invoices/${id}`)
+      })
+    }
   }
 
   return (
@@ -106,11 +153,17 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
         <h2 className="label-caps">Invoice Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#5a5c62] mb-1">Project *</label>
-            <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} required className={INPUT}>
-              <option value="">Select a project</option>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.title} — {p.clients?.name}</option>)}
-            </select>
+            <label className="block text-sm font-medium text-[#5a5c62] mb-1">Project {!editMode && '*'}</label>
+            {editMode ? (
+              <div className={`${INPUT} bg-[#f8f9fa] text-[#5a5c62] cursor-not-allowed`}>
+                {invoiceProject?.title} — {invoiceProject?.clients?.name}
+              </div>
+            ) : (
+              <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} required className={INPUT}>
+                <option value="">Select a project</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.title} — {p.clients?.name}</option>)}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-[#5a5c62] mb-1">Due Date</label>
@@ -118,11 +171,19 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
           </div>
         </div>
 
-        {selectedProject && (
+        {!editMode && selectedProject && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-[#f8f9fa] rounded-lg p-3">
             <div><span className="text-[#8a8c94]">Client:</span> <span className="font-medium text-[#1a1c1e]">{selectedProject.clients?.name}</span></div>
             {selectedProject.job_type && <div><span className="text-[#8a8c94]">Job Type:</span> <span className="font-medium text-[#1a1c1e]">{selectedProject.job_type}</span></div>}
             {selectedProject.location_address && <div><span className="text-[#8a8c94]">Location:</span> <span className="font-medium text-[#1a1c1e]">{selectedProject.location_address}</span></div>}
+          </div>
+        )}
+
+        {editMode && invoiceProject && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-[#f8f9fa] rounded-lg p-3">
+            <div><span className="text-[#8a8c94]">Client:</span> <span className="font-medium text-[#1a1c1e]">{invoiceProject.clients?.name}</span></div>
+            {invoiceProject.job_type && <div><span className="text-[#8a8c94]">Job Type:</span> <span className="font-medium text-[#1a1c1e]">{invoiceProject.job_type}</span></div>}
+            {invoiceProject.location_address && <div><span className="text-[#8a8c94]">Location:</span> <span className="font-medium text-[#1a1c1e]">{invoiceProject.location_address}</span></div>}
           </div>
         )}
 
@@ -233,10 +294,16 @@ export function InvoiceForm({ projects, bizSettings }: { projects: ProjectWithCl
       </div>
 
       <div className="flex items-center gap-3">
-        <button type="button" onClick={() => router.back()} className="px-4 py-2 text-sm text-[#5a5c62] hover:text-[#1a1c1e]">Cancel</button>
-        <button type="submit" disabled={isPending || !selectedProjectId}
+        {editMode && invoice ? (
+          <Link href={`/invoices/${invoice.id}`} className="px-4 py-2 text-sm text-[#5a5c62] hover:text-[#1a1c1e]">
+            ← Back to Invoice
+          </Link>
+        ) : (
+          <button type="button" onClick={() => router.back()} className="px-4 py-2 text-sm text-[#5a5c62] hover:text-[#1a1c1e]">Cancel</button>
+        )}
+        <button type="submit" disabled={isPending || (!editMode && !selectedProjectId)}
           className="px-6 py-2 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 font-medium">
-          {isPending ? 'Creating...' : 'Create Invoice'}
+          {isPending ? (editMode ? 'Saving...' : 'Creating...') : (editMode ? 'Save Changes' : 'Create Invoice')}
         </button>
       </div>
     </form>
