@@ -2,17 +2,19 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
-import { Document, Page, pdfjs } from 'react-pdf'
+import dynamic from 'next/dynamic'
 import { deleteInvoiceAction, markSentAction } from '@/app/(dashboard)/invoices/actions'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+const InvoicePDFPreview = dynamic(
+  () => import('./InvoicePDFPreview').then(m => m.InvoicePDFPreview),
+  { ssr: false }
+)
 
 export function InvoiceActions({ invoiceId, clientEmail, status }: { invoiceId: string; clientEmail: string | null; status: string }) {
   const router = useRouter()
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [isPending, startTransition] = useTransition()
   const [previewOpen, setPreviewOpen] = useState(false)
-  const [numPages, setNumPages] = useState<number>(0)
 
   async function handleEmail() {
     setEmailStatus('sending')
@@ -81,16 +83,7 @@ export function InvoiceActions({ invoiceId, clientEmail, status }: { invoiceId: 
               </button>
             </div>
             <div className="flex-1 overflow-y-auto bg-[#f0f0f0] flex flex-col items-center py-4 gap-4">
-              <Document
-                file={`/api/invoice/${invoiceId}/pdf?preview=true`}
-                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                loading={<span className="text-sm text-[#8a8c94] mt-8">Loading preview…</span>}
-                error={<span className="text-sm text-red-500 mt-8">Failed to load PDF.</span>}
-              >
-                {Array.from({ length: numPages }, (_, i) => (
-                  <Page key={i + 1} pageNumber={i + 1} width={750} className="shadow-md" renderTextLayer={false} renderAnnotationLayer={false} />
-                ))}
-              </Document>
+              <InvoicePDFPreview invoiceId={invoiceId} />
             </div>
           </div>
         </div>
