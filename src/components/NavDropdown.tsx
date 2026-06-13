@@ -49,7 +49,7 @@ export function NavDropdown({ logoUrl, businessName }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1.5 w-48 bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden z-20">
+        <div className="absolute left-0 bottom-full mb-2 w-52 bg-white rounded-xl border border-[#e0e0e3] shadow-[0px_8px_32px_rgba(26,28,30,0.12)] overflow-hidden z-50">
           {businessName && (
             <div className="px-4 py-2.5 border-b border-[#e0e0e3] bg-[#f8f9fa]">
               <p className="text-xs font-semibold text-[#1a1c1e] truncate">{businessName}</p>

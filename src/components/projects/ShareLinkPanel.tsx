@@ -2,9 +2,9 @@
 import { useState, useTransition } from 'react'
 import { rotateShareTokenAction, toggleFinancialsAction } from '@/app/(dashboard)/projects/[id]/actions'
 
-interface Props { projectId: string; shareToken: string; showFinancials: boolean }
+interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number }
 
-export function ShareLinkPanel({ projectId, shareToken, showFinancials }: Props) {
+export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount }: Props) {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -39,6 +39,21 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials }: Props)
             {copied ? '✓ Copied' : 'Copy'}
           </button>
         </div>
+        {fileCount === 0 && (
+          <div className="flex items-start gap-2 mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+            <svg
+              className="w-4 h-4 text-amber-600 shrink-0 mt-0.5"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+              />
+            </svg>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              No documents uploaded yet — your client will see an empty page if you share this link now.
+            </p>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <button onClick={handleRotate} disabled={isPending}
             className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50">

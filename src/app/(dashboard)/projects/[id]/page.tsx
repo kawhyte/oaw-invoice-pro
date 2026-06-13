@@ -75,7 +75,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
 
       <ProjectNotes projectId={id} notes={notes ?? []} />
-      <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} />
+      <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.length} />
     </div>
   )
 }

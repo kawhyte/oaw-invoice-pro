@@ -31,7 +31,7 @@ export function FinancialChart({ stats }: { stats: CurrencyStats[] }) {
   return (
     <div className="space-y-4">
       {/* Donut chart with centered overlay label */}
-      <div className="relative">
+      <div className="relative" style={{ overflow: 'visible' }}>
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie
@@ -47,7 +47,12 @@ export function FinancialChart({ stats }: { stats: CurrencyStats[] }) {
                 <Cell key={i} fill={COLOR_MAP[entry.name]} strokeWidth={0} />
               ))}
             </Pie>
-            <Tooltip formatter={fmt} />
+            <Tooltip
+              formatter={fmt}
+              wrapperStyle={{ zIndex: 50 }}
+              contentStyle={{ color: '#1a1c1e' }}
+              itemStyle={{ color: '#1a1c1e' }}
+            />
           </PieChart>
         </ResponsiveContainer>
 
