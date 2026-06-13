@@ -37,7 +37,14 @@ export function ProjectsTable({ projects, clients }: Props) {
                     <StatusChip status={project.status} />
                   </div>
                   {project.location_address && (
-                    <p className="text-xs text-[#8a8c94] mt-2 truncate">{project.location_address}</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ background: project.lat ? '#715a3e' : '#d1d5db' }}
+                        title={project.lat ? 'Shown on map' : 'Not geocoded — not on map'}
+                      />
+                      <p className="text-xs text-[#8a8c94] truncate">{project.location_address}</p>
+                    </div>
                   )}
                 </Link>
               ))}
@@ -60,7 +67,18 @@ export function ProjectsTable({ projects, clients }: Props) {
                       <td className="px-6 py-4">
                         <StatusChip status={p.status} />
                       </td>
-                      <td className="px-6 py-4 text-sm text-[#8a8c94]">{p.location_address ?? '—'}</td>
+                      <td className="px-6 py-4 text-sm text-[#8a8c94]">
+                        {p.location_address ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: p.lat ? '#715a3e' : '#d1d5db' }}
+                              title={p.lat ? 'Shown on map' : 'Not geocoded — not on map'}
+                            />
+                            {p.location_address}
+                          </span>
+                        ) : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

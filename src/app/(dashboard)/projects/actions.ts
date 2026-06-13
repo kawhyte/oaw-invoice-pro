@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { geocodeAddress } from '@/lib/geocode'
 import { revalidatePath } from 'next/cache'
 
-export async function createProjectAction(formData: FormData) {
+export async function createProjectAction(formData: FormData): Promise<{ geocoded: boolean }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
@@ -23,9 +23,10 @@ export async function createProjectAction(formData: FormData) {
     lng: coords?.lng ?? null,
   })
   revalidatePath('/projects')
+  return { geocoded: !address || coords !== null }
 }
 
-export async function updateProjectAction(id: string, formData: FormData) {
+export async function updateProjectAction(id: string, formData: FormData): Promise<{ geocoded: boolean }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
@@ -46,6 +47,7 @@ export async function updateProjectAction(id: string, formData: FormData) {
   }).eq('id', id).eq('user_id', user.id)
   revalidatePath('/projects')
   revalidatePath(`/projects/${id}`)
+  return { geocoded: !address || coords !== null }
 }
 
 export async function deleteProjectAction(id: string) {

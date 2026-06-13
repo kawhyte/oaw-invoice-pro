@@ -23,15 +23,21 @@ export function ProjectDialog({ project, clients, onClose }: Props) {
   const router = useRouter()
   const [clientId, setClientId] = useState(project?.client_id ?? '')
   const [status, setStatus] = useState(project?.status ?? 'discovery')
+  const [geocodeWarning, setGeocodeWarning] = useState(false)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
-      if (project) await updateProjectAction(project.id, formData)
-      else await createProjectAction(formData)
-      onClose()
+      const result = project
+        ? await updateProjectAction(project.id, formData)
+        : await createProjectAction(formData)
       router.refresh()
+      if (!result.geocoded) {
+        setGeocodeWarning(true)
+        return
+      }
+      onClose()
     })
   }
 
@@ -86,8 +92,20 @@ export function ProjectDialog({ project, clients, onClose }: Props) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Location Address</label>
-            <input name="location_address" defaultValue={project?.location_address ?? ''} placeholder="e.g. 10 Harbour St, Kingston, Jamaica" className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
-            <p className="text-xs text-gray-400 mt-1">Address will be geocoded automatically for the map.</p>
+            <input
+              name="location_address"
+              defaultValue={project?.location_address ?? ''}
+              placeholder="e.g. 10 Harbour St, Kingston, Jamaica"
+              onChange={() => setGeocodeWarning(false)}
+              className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]"
+            />
+            {geocodeWarning ? (
+              <p className="text-xs text-orange-500 mt-1">
+                Address couldn&apos;t be geocoded — this project won&apos;t appear on the map. Try a broader address (e.g. city and parish).
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">Address will be geocoded automatically for the map.</p>
+            )}
           </div>
           <div className="flex items-center justify-between pt-2">
             {project ? (
