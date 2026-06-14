@@ -45,7 +45,9 @@ export async function removeLogoAction() {
     const marker = '/object/public/logos/'
     const idx = settings.logo_url.indexOf(marker)
     if (idx !== -1) {
-      const path = decodeURIComponent(settings.logo_url.substring(idx + marker.length))
+      const path = decodeURIComponent(
+        settings.logo_url.substring(idx + marker.length).split('?')[0]
+      )
       await service.storage.from('logos').remove([path])
     }
   }

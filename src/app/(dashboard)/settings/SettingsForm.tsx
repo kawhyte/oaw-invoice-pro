@@ -35,11 +35,31 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
       const ext = file.type === 'image/png' ? 'png' : 'jpg'
-      const path = `${user.id}/logo.${ext}`
+      const timestamp = Date.now()
+      const path = `${user.id}/logo-${timestamp}.${ext}`
+
+      // Delete old logo file if one exists
+      const { data: currentSettings } = await supabase
+        .from('business_settings')
+        .select('logo_url')
+        .eq('user_id', user.id)
+        .single()
+
+      if (currentSettings?.logo_url) {
+        const marker = '/object/public/logos/'
+        const idx = currentSettings.logo_url.indexOf(marker)
+        if (idx !== -1) {
+          const oldPath = decodeURIComponent(
+            currentSettings.logo_url.substring(idx + marker.length).split('?')[0]
+          )
+          await supabase.storage.from('logos').remove([oldPath])
+        }
+      }
+
       const { error } = await supabase.storage.from('logos').upload(path, file, { upsert: true })
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path)
-      const urlWithBust = `${publicUrl}?t=${Date.now()}`
+      const urlWithBust = publicUrl
       await saveLogoUrlAction(urlWithBust)
       setLogoUrl(urlWithBust)
     } catch (err: any) {

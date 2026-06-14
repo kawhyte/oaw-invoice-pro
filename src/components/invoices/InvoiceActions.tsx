@@ -12,22 +12,24 @@ const InvoicePDFPreview = dynamic(
 
 export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status }: { invoiceId: string; invoiceNumber: string; clientEmail: string | null; status: string }) {
   const router = useRouter()
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  // Email feature — paused for future sprint (see button comment below)
+  // const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [isPending, startTransition] = useTransition()
   const [previewOpen, setPreviewOpen] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-  async function handleEmail() {
-    setEmailStatus('sending')
-    const res = await fetch(`/api/invoice/${invoiceId}/email`, { method: 'POST' })
-    if (res.ok) {
-      setEmailStatus('sent')
-      startTransition(async () => { await markSentAction(invoiceId) })
-    } else {
-      setEmailStatus('error')
-    }
-    setTimeout(() => setEmailStatus('idle'), 3000)
-  }
+  // Email feature — paused for future sprint (see button comment below)
+  // async function handleEmail() {
+  //   setEmailStatus('sending')
+  //   const res = await fetch(`/api/invoice/${invoiceId}/email`, { method: 'POST' })
+  //   if (res.ok) {
+  //     setEmailStatus('sent')
+  //     startTransition(async () => { await markSentAction(invoiceId) })
+  //   } else {
+  //     setEmailStatus('error')
+  //   }
+  //   setTimeout(() => setEmailStatus('idle'), 3000)
+  // }
 
   function handleDelete() {
     setShowDeleteModal(false)
@@ -56,12 +58,16 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status }
           className="px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] transition-colors">
           Download PDF
         </a>
+        {/* Email to Client — paused for future sprint.
+            Backend route /api/invoice/[id]/email is fully implemented and ready.
+            Re-enable by uncommenting this block when the feature goes live.
         {clientEmail && (
           <button onClick={handleEmail} disabled={emailStatus === 'sending'}
             className="px-3 py-1.5 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 transition-colors">
             {emailStatus === 'idle' ? 'Email to Client' : emailStatus === 'sending' ? 'Sending...' : emailStatus === 'sent' ? '✓ Sent' : 'Error — Retry'}
           </button>
         )}
+        */}
         <button onClick={() => setShowDeleteModal(true)} disabled={isPending} className="px-3 py-1.5 text-sm text-red-500 hover:text-red-700 disabled:opacity-50">
           Delete
         </button>
