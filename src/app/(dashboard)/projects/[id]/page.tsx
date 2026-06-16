@@ -16,11 +16,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }] = await Promise.all([
+  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }, { data: invoices }] = await Promise.all([
     supabase.from('projects').select('*, clients(*)').eq('id', id).eq('user_id', user.id).single(),
     supabase.from('project_notes').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('project_files').select('*').eq('project_id', id).order('uploaded_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
+    supabase.from('invoices').select('id, invoice_number, status, total, amount_paid, currency, created_at').eq('project_id', id).order('created_at', { ascending: false }),
   ])
 
   if (!project) notFound()
@@ -71,6 +72,51 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
         <div className="p-6">
           <FileList projectId={id} files={filesWithUrls} />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e0e0e3]">
+          <h2 className="label-caps">Invoices</h2>
+          <Link
+            href={`/invoices/new?projectId=${id}`}
+            className="text-sm font-medium text-[#715a3e] hover:text-[#8b7355] transition-colors"
+          >
+            + New Invoice
+          </Link>
+        </div>
+        <div className="p-6">
+          {(!invoices || invoices.length === 0) ? (
+            <p className="text-sm text-[#8a8c94]">No invoices yet.</p>
+          ) : (
+            <div className="space-y-0 divide-y divide-[#f0f0f2]">
+              {invoices.map((inv: any) => {
+                const owing = Number(inv.total) - Number(inv.amount_paid)
+                const fmt = (n: number) =>
+                  `${inv.currency} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                return (
+                  <Link
+                    key={inv.id}
+                    href={`/invoices/${inv.id}`}
+                    className="flex items-center justify-between py-3 hover:bg-[#f8f9fa] -mx-6 px-6 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm font-medium text-[#1a1c1e]">
+                        {inv.invoice_number}
+                      </span>
+                      <StatusChip status={inv.status} />
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-sm text-[#1a1c1e]">{fmt(inv.total)}</p>
+                      {owing > 0 && (
+                        <p className="font-mono text-xs text-[#715a3e]">{fmt(owing)} owing</p>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 

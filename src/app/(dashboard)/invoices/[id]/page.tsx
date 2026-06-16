@@ -13,7 +13,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   const { data: invoice } = await supabase
     .from('invoices')
-    .select('*, projects(title, job_type, location_address, clients(name, email)), invoice_line_items(*)')
+    .select('*, projects(id, title, job_type, location_address, clients(name, email)), invoice_line_items(*)')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -38,8 +38,17 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           </div>
           <p className="text-sm text-[#5a5c62] mt-0.5">
             {client?.name}
-            {project?.job_type ? ` · ${project.job_type}` : ''}
-            {project?.location_address ? ` · ${project.location_address}` : ''}
+            {project && (
+              <>
+                {' · '}
+                <Link
+                  href={`/projects/${project.id}`}
+                  className="text-[#715a3e] hover:text-[#8b7355] hover:underline transition-colors"
+                >
+                  {project.title}
+                </Link>
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
