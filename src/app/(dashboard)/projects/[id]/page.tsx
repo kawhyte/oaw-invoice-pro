@@ -8,6 +8,7 @@ import { FileUpload } from '@/components/projects/FileUpload'
 import { FileList } from '@/components/projects/FileList'
 import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { Eye } from 'lucide-react'
 import type { ProjectFile } from '@/types'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -67,7 +68,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="label-caps">Files</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="label-caps">Files</h2>
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">
+              <Eye className="w-3 h-3" />
+              Always visible to client
+            </span>
+          </div>
           <FileUpload projectId={id} userId={user.id} />
         </div>
         <div className="p-6">
@@ -121,7 +128,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
 
       <ProjectNotes projectId={id} notes={notes ?? []} />
-      <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.length} />
+      <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.length} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} />
     </div>
   )
 }

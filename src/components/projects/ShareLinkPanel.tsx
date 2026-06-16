@@ -1,10 +1,11 @@
 'use client'
 import { useState, useTransition } from 'react'
+import { CheckCircle2, Circle } from 'lucide-react'
 import { rotateShareTokenAction, toggleFinancialsAction } from '@/app/(dashboard)/projects/[id]/actions'
 
-interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number }
+interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; noteCount: number; invoiceCount: number }
 
-export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount }: Props) {
+export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, noteCount, invoiceCount }: Props) {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
@@ -31,6 +32,38 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
         <h2 className="text-sm font-semibold text-gray-900">Client Share Link</h2>
       </div>
       <div className="p-6 space-y-4">
+        <div className="rounded-lg border border-[#e0e0e3] bg-[#f8f9fa] divide-y divide-[#e0e0e3]">
+          <p className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">What your client will see</p>
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+              <span className="text-sm text-gray-700">Project documents</span>
+            </div>
+            {fileCount > 0
+              ? <span className="text-sm text-gray-600">{fileCount} file{fileCount !== 1 ? 's' : ''}</span>
+              : <span className="text-sm text-amber-600 font-medium">⚠ No files uploaded</span>}
+          </div>
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+              <span className="text-sm text-gray-700">Progress notes</span>
+            </div>
+            {noteCount > 0
+              ? <span className="text-sm text-gray-600">{noteCount} update{noteCount !== 1 ? 's' : ''}</span>
+              : <span className="text-sm text-gray-400">No updates yet</span>}
+          </div>
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-2">
+              {showFinancials
+                ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                : <Circle className="w-4 h-4 text-gray-300 shrink-0" />}
+              <span className="text-sm text-gray-700">Invoice summary</span>
+            </div>
+            {showFinancials
+              ? <span className="text-sm text-gray-600">{invoiceCount} invoice{invoiceCount !== 1 ? 's' : ''}</span>
+              : <span className="text-sm text-gray-400">Off — toggle below to enable</span>}
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <input readOnly value={shareUrl}
             className="flex-1 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#5a5c62] bg-[#f8f9fa] focus:outline-none" />
@@ -39,21 +72,6 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
             {copied ? '✓ Copied' : 'Copy'}
           </button>
         </div>
-        {fileCount === 0 && (
-          <div className="flex items-start gap-2 mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
-            <svg
-              className="w-4 h-4 text-amber-600 shrink-0 mt-0.5"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-              />
-            </svg>
-            <p className="text-xs text-amber-700 leading-relaxed">
-              No documents uploaded yet — your client will see an empty page if you share this link now.
-            </p>
-          </div>
-        )}
         <div className="flex items-center justify-between">
           <button onClick={handleRotate} disabled={isPending}
             className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50">
