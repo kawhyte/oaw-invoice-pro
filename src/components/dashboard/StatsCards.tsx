@@ -19,9 +19,8 @@ export function StatsCards({ stats, invoiceCount }: { stats: CurrencyStats[]; in
             <p className="text-xl font-bold text-gray-300">—</p>
           ) : (
             card.values.map(v => (
-              <div key={v.currency} className="flex items-baseline gap-1.5">
+              <div key={v.currency}>
                 <p className={`text-xl font-bold data-mono ${card.color}`}>{fmt(v.value, v.currency)}</p>
-                <span className="text-xs text-gray-400">{v.currency}</span>
               </div>
             ))
           )}
