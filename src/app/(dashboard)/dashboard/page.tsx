@@ -4,6 +4,7 @@ import { StatsCards } from '@/components/dashboard/StatsCards'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
 import { ProjectMap } from '@/components/dashboard/ProjectMap'
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices'
+import { RecentProjects } from '@/components/dashboard/RecentProjects'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -12,7 +13,7 @@ export default async function DashboardPage() {
 
   const [{ data: invoices }, { data: projects }, { data: recentInvoices }] = await Promise.all([
     supabase.from('invoices').select('*'),
-    supabase.from('projects').select('*, clients(name)'),
+    supabase.from('projects').select('*, clients(name)').order('updated_at', { ascending: false }),
     supabase
       .from('invoices')
       .select('*, projects(title, clients(name))')
@@ -67,6 +68,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <RecentProjects projects={(projects ?? []).slice(0, 5) as any} />
       <RecentInvoices invoices={(recentInvoices ?? []) as any} />
     </div>
   )
