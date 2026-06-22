@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const [{ data: invoice }, { data: bizSettings }] = await Promise.all([
     supabase.from('invoices')
-      .select('*, projects(title, job_type, location_address, clients(name, email)), invoice_line_items(*)')
+      .select('*, projects(title, job_type, location_address, clients(name, email)), clients(name, email), invoice_line_items(*)')
       .eq('id', id).eq('user_id', user.id).single(),
     supabase.from('business_settings').select('*').eq('user_id', user.id).single(),
   ])

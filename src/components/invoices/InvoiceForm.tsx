@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createInvoiceAction, updateInvoiceAction } from '@/app/(dashboard)/invoices/actions'
+import { lineSubtotal, computeTotals } from '@/lib/invoiceCalc'
 import type { Client, Project, BusinessSettings, DiscountType, Invoice, InvoiceLineItem } from '@/types'
 
 interface ProjectWithClient extends Omit<Project, 'clients'> { clients: Client | null }
@@ -24,7 +25,7 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
   const [isPending, startTransition] = useTransition()
 
   const [selectedProjectId, setSelectedProjectId] = useState(() =>
-    editMode && invoice ? invoice.project_id : ''
+    editMode && invoice ? invoice.project_id ?? '' : ''
   )
   const [currency, setCurrency] = useState<'JMD' | 'USD'>(() =>
     editMode && invoice ? invoice.currency : 'JMD'
@@ -83,13 +84,15 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
     setLineItems(prev => prev.map(i => i.tempId === tempId ? { ...i, [field]: value } : i))
   }
 
-  const subtotal = lineItems.reduce((sum, i) => sum + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0)
-  const discountNum = parseFloat(discountValue) || 0
-  const discountAmount = discountType === 'percentage' ? subtotal * (discountNum / 100) : discountType === 'fixed' ? discountNum : 0
-  const afterDiscount = subtotal - discountAmount
-  const gctAmount = useGct ? afterDiscount * 0.15 : 0
+  const subtotal = lineSubtotal(lineItems.map(i => ({ quantity: parseFloat(i.quantity) || 0, unit_price: parseFloat(i.unit_price) || 0 })))
   const additionsNum = parseFloat(additionsAmount) || 0
-  const total = afterDiscount + gctAmount + additionsNum
+  const { discountAmount, gctAmount, total } = computeTotals({
+    subtotal,
+    discountType,
+    discountValue: parseFloat(discountValue) || 0,
+    gctRate: useGct ? 0.15 : 0,
+    additionsAmount: additionsNum,
+  })
   const amountPaidNum = parseFloat(amountPaid) || 0
   const owing = total - amountPaidNum
 

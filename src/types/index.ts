@@ -66,12 +66,19 @@ export interface InvoiceLineItem {
   unit_price: number
   amount: number
   sort_order: number
+  /** Set on combined invoices to group items under a project section. */
+  project_id: string | null
+  /** Snapshot of the project title at billing time (for combined invoices). */
+  section_title: string | null
 }
 
 export interface Invoice {
   id: string
   user_id: string
-  project_id: string
+  /** NULL for combined (multi-project) invoices. */
+  project_id: string | null
+  /** Direct client link; populated for new invoices, NULL for legacy single-project ones. */
+  client_id: string | null
   invoice_number: string
   currency: Currency
   subtotal: number
@@ -87,7 +94,10 @@ export interface Invoice {
   status: InvoiceStatus
   notes: string | null
   created_at: string
+  /** For combined invoices: { [project_id]: original draft invoice_number } — used to restore numbers on Separate. */
+  source_meta?: Record<string, string> | null
   projects?: Project
+  clients?: Client
   invoice_line_items?: InvoiceLineItem[]
 }
 

@@ -8,9 +8,17 @@ import { StatusChip } from '@/components/ui/StatusChip'
 const ALL_STATUSES = ['draft', 'sent', 'partial', 'paid', 'overdue']
 const STATUS_LABELS: Record<string, string> = { draft: 'Draft', sent: 'Sent', partial: 'Partial', paid: 'Paid', overdue: 'Overdue' }
 
-interface InvoiceRow extends Omit<Invoice, 'projects'> {
+interface InvoiceRow extends Omit<Invoice, 'projects' | 'clients' | 'invoice_line_items'> {
   projects: { title: string; job_type: string | null; location_address: string | null; clients: { name: string } | null } | null
+  clients: { name: string } | null
+  invoice_line_items?: { section_title: string | null }[]
 }
+
+const clientName = (inv: InvoiceRow) => inv.projects?.clients?.name ?? inv.clients?.name ?? '—'
+const combinedProjectNames = (inv: InvoiceRow) =>
+  inv.project_id === null
+    ? ([...new Set((inv.invoice_line_items ?? []).map(li => li.section_title).filter(Boolean))] as string[])
+    : []
 
 export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
   const router = useRouter()
@@ -24,7 +32,7 @@ export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
     const q = search.toLowerCase()
     const matchSearch = !q ||
       inv.invoice_number.toLowerCase().includes(q) ||
-      (inv.projects?.clients?.name ?? '').toLowerCase().includes(q) ||
+      clientName(inv).toLowerCase().includes(q) ||
       (inv.projects?.location_address ?? '').toLowerCase().includes(q)
     const matchStatus = statusFilter === 'all' || inv.status === statusFilter
     return matchSearch && matchStatus
@@ -63,13 +71,21 @@ export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
                   <Link key={invoice.id} href={`/invoices/${invoice.id}`}
                     className="block bg-white rounded-xl border border-[#e0e0e3] shadow-[0px_4px_20px_rgba(26,28,30,0.04)] p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="font-mono font-medium text-[#1a1c1e]">{invoice.invoice_number}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-medium text-[#1a1c1e]">{invoice.invoice_number}</span>
+                        {invoice.project_id === null && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#f5ede4] border border-[#715a3e]/20 text-[#715a3e] font-medium">Combined</span>
+                        )}
+                      </div>
                       <StatusChip status={invoice.status} />
                     </div>
-                    <p className="text-sm text-[#5a5c62] mb-3">
-                      {invoice.projects?.clients?.name ?? '—'}
+                    <p className="text-sm text-[#5a5c62] mb-1">
+                      {clientName(invoice)}
                       {invoice.projects?.job_type ? ` · ${invoice.projects.job_type}` : ''}
                     </p>
+                    {invoice.project_id === null && combinedProjectNames(invoice).length > 0 && (
+                      <p className="text-xs text-[#8a8c94] mb-3">{combinedProjectNames(invoice).join(' + ')}</p>
+                    )}
                     <div className="flex justify-between text-sm">
                       <div>
                         <p className="text-[10px] font-semibold tracking-widest uppercase text-[#8a8c94] mb-0.5">Total</p>
@@ -102,9 +118,20 @@ export function InvoiceList({ invoices }: { invoices: InvoiceRow[] }) {
                     const owing = inv.total - inv.amount_paid
                     return (
                       <tr key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)} className="hover:bg-[#f8f9fa] cursor-pointer transition-colors">
-                        <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] data-mono">{inv.invoice_number}</td>
-                        <td className="px-6 py-4 text-sm text-[#5a5c62]">{inv.projects?.clients?.name ?? '—'}</td>
-                        <td className="px-6 py-4 text-sm text-[#8a8c94]">{inv.projects?.job_type ?? '—'}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] data-mono">
+                          <span className="inline-flex items-center gap-2">
+                            {inv.invoice_number}
+                            {inv.project_id === null && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#f5ede4] border border-[#715a3e]/20 text-[#715a3e] font-medium">Combined</span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-[#5a5c62]">{clientName(inv)}</td>
+                        <td className="px-6 py-4 text-sm text-[#8a8c94]">
+                          {inv.project_id === null
+                            ? (combinedProjectNames(inv).join(' + ') || 'Multiple projects')
+                            : (inv.projects?.job_type ?? '—')}
+                        </td>
                         <td className="px-6 py-4 text-sm text-[#8a8c94] max-w-32 truncate">{inv.projects?.location_address ?? '—'}</td>
                         <td className="px-6 py-4 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(inv.total, inv.currency)}</td>
                         <td className={`px-6 py-4 text-sm font-medium text-right data-mono ${owing > 0 ? 'text-amber-600' : 'text-gray-400'}`}>{fmt(owing, inv.currency)}</td>

@@ -5,7 +5,7 @@ export default async function InvoicesPage() {
   const supabase = await createClient()
   const { data: invoices } = await supabase
     .from('invoices')
-    .select('*, projects(title, job_type, location_address, clients(name))')
+    .select('*, projects(title, job_type, location_address, clients(name)), clients(name), invoice_line_items(section_title)')
     .order('created_at', { ascending: false })
 
   return (

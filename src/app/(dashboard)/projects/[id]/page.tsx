@@ -22,10 +22,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase.from('project_notes').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('project_files').select('*').eq('project_id', id).order('uploaded_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
-    supabase.from('invoices').select('id, invoice_number, status, total, amount_paid, currency, created_at').eq('project_id', id).order('created_at', { ascending: false }),
+    supabase.from('invoices').select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id').eq('project_id', id).order('created_at', { ascending: false }),
   ])
 
   if (!project) notFound()
+
+  // Combined invoices touch this project via their line items (project_id is null on the invoice).
+  const { data: combinedLi } = await supabase.from('invoice_line_items').select('invoice_id').eq('project_id', id)
+  const combinedIds = [...new Set((combinedLi ?? []).map((r: { invoice_id: string }) => r.invoice_id))]
+  const { data: combinedInvoices } = combinedIds.length
+    ? await supabase
+        .from('invoices')
+        .select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id, invoice_line_items(section_title)')
+        .eq('user_id', user.id)
+        .in('id', combinedIds)
+        .is('project_id', null)
+        .order('created_at', { ascending: false })
+    : { data: [] }
+  const allInvoices = [...(invoices ?? []), ...(combinedInvoices ?? [])]
 
   const service = createServiceClient()
   const filesWithUrls = await Promise.all(
@@ -93,27 +107,43 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </Link>
         </div>
         <div className="p-6">
-          {(!invoices || invoices.length === 0) ? (
+          {allInvoices.length === 0 ? (
             <p className="text-sm text-[#8a8c94]">No invoices yet.</p>
           ) : (
             <div className="space-y-0 divide-y divide-[#f0f0f2]">
-              {invoices.map((inv: any) => {
+              {allInvoices.map((inv: any) => {
                 const owing = Number(inv.total) - Number(inv.amount_paid)
                 const fmt = (n: number) =>
                   `${inv.currency} ${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                const otherProjects = inv.project_id === null
+                  ? ([...new Set((inv.invoice_line_items ?? []).map((li: any) => li.section_title).filter(Boolean))] as string[])
+                      .filter(t => t !== project.title)
+                  : []
                 return (
                   <Link
                     key={inv.id}
                     href={`/invoices/${inv.id}`}
-                    className="flex items-center justify-between py-3 hover:bg-[#f8f9fa] -mx-6 px-6 transition-colors"
+                    className="flex items-center justify-between py-3 hover:bg-[#f8f9fa] -mx-6 px-6 transition-colors gap-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-medium text-[#1a1c1e]">
-                        {inv.invoice_number}
-                      </span>
-                      <StatusChip status={inv.status} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-sm font-medium text-[#1a1c1e]">
+                          {inv.invoice_number}
+                        </span>
+                        <StatusChip status={inv.status} />
+                        {inv.project_id === null && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#f5ede4] border border-[#715a3e]/20 text-[#715a3e] font-medium">
+                            Combined
+                          </span>
+                        )}
+                      </div>
+                      {inv.project_id === null && (
+                        <p className="text-xs text-[#8a8c94] mt-0.5 truncate">
+                          {otherProjects.length > 0 ? `With ${otherProjects.join(' + ')}` : 'Billed with other projects'}
+                        </p>
+                      )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p className="font-mono text-sm text-[#1a1c1e]">{fmt(inv.total)}</p>
                       {owing > 0 && (
                         <p className="font-mono text-xs text-[#715a3e]">{fmt(owing)} owing</p>

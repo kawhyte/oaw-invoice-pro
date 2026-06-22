@@ -1,9 +1,12 @@
+import { Fragment } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { InvoiceActions } from '@/components/invoices/InvoiceActions'
+import { SeparateInvoiceButton } from '@/components/invoices/SeparateInvoiceButton'
 import { AmountPaidForm } from '@/components/invoices/AmountPaidForm'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { discountAmountFor } from '@/lib/invoiceCalc'
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -13,7 +16,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   const { data: invoice } = await supabase
     .from('invoices')
-    .select('*, projects(id, title, job_type, location_address, clients(name, email)), invoice_line_items(*)')
+    .select('*, projects(id, title, job_type, location_address, clients(id, name, email)), clients(id, name, email), invoice_line_items(*)')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -21,8 +24,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   if (!invoice) notFound()
 
   const project = invoice.projects as any
-  const client = project?.clients
+  // Combined invoices link the client directly; single-project ones via the project.
+  const client = (invoice.clients as any) ?? project?.clients
   const lineItems = [...(invoice.invoice_line_items ?? [])].sort((a: any, b: any) => a.sort_order - b.sort_order)
+  const isCombined = lineItems.some((li: any) => li.project_id)
+  const sections: { title: string; items: any[]; subtotal: number }[] = []
+  if (isCombined) {
+    for (const li of lineItems) {
+      const title = li.section_title || 'Project'
+      let sec = sections.find(s => s.title === title)
+      if (!sec) { sec = { title, items: [], subtotal: 0 }; sections.push(sec) }
+      sec.items.push(li)
+      sec.subtotal += Number(li.amount)
+    }
+  }
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency }).format(n)
   const owing = invoice.total - invoice.amount_paid
 
@@ -35,10 +50,24 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           <div className="flex items-center gap-2 mt-2">
             <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">{invoice.invoice_number}</h1>
             <StatusChip status={invoice.status} />
+            {isCombined && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[#f5ede4] border border-[#715a3e]/20 text-[#715a3e] font-medium">
+                Combined · {sections.length} projects
+              </span>
+            )}
           </div>
           <p className="text-sm text-[#5a5c62] mt-0.5">
-            {client?.name}
-            {project && (
+            {client?.id ? (
+              <Link
+                href={`/clients/${client.id}`}
+                className="text-[#715a3e] hover:text-[#8b7355] hover:underline transition-colors"
+              >
+                {client.name}
+              </Link>
+            ) : (
+              client?.name
+            )}
+            {!isCombined && project && (
               <>
                 {' · '}
                 <Link
@@ -52,7 +81,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {invoice.status !== 'paid' && (
+          {invoice.status !== 'paid' && !isCombined && (
             <Link
               href={`/invoices/${id}/edit`}
               className="px-4 py-2 text-sm font-medium border border-[#e0e0e3] text-[#1a1c1e] rounded-lg hover:bg-[#f8f9fa] transition-colors"
@@ -60,9 +89,28 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               Edit
             </Link>
           )}
+          {isCombined && invoice.status === 'draft' && (
+            <SeparateInvoiceButton invoiceId={id} projectCount={sections.length} />
+          )}
           <InvoiceActions invoiceId={id} invoiceNumber={invoice.invoice_number} clientEmail={client?.email ?? null} status={invoice.status} />
         </div>
       </div>
+
+      {/* Combined invoice explainer — names the projects in plain language */}
+      {isCombined && (
+        <div className="bg-[#f5ede4] border border-[#715a3e]/20 rounded-xl px-5 py-3 text-sm text-[#1a1c1e]">
+          <span className="font-semibold">Combined invoice.</span> This one invoice bills{' '}
+          {sections.length} projects together:{' '}
+          {sections.map((s, i) => (
+            <span key={s.title}>
+              {i > 0 && (i === sections.length - 1 ? ' and ' : ', ')}
+              <span className="font-medium">{s.title}</span>
+            </span>
+          ))}
+          . Each is itemized below with its own subtotal, then totaled once.
+          {invoice.status === 'draft' && ' Use “Separate” above to split it back into individual invoices.'}
+        </div>
+      )}
 
       {/* Line Items */}
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
@@ -79,14 +127,34 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {lineItems.map((item: any) => (
-              <tr key={item.id}>
-                <td className="px-6 py-3 text-sm text-[#1a1c1e]">{item.description}</td>
-                <td className="px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
-                <td className="px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
-                <td className="px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(item.amount)}</td>
-              </tr>
-            ))}
+            {isCombined
+              ? sections.map(sec => (
+                  <Fragment key={sec.title}>
+                    <tr className="bg-[#f5ede4]/50">
+                      <td colSpan={4} className="px-6 py-2 label-caps text-[#715a3e]">{sec.title}</td>
+                    </tr>
+                    {sec.items.map((item: any) => (
+                      <tr key={item.id}>
+                        <td className="px-6 py-3 text-sm text-[#1a1c1e]">{item.description}</td>
+                        <td className="px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
+                        <td className="px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
+                        <td className="px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(item.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={3} className="px-6 py-2 text-xs text-[#8a8c94] text-right">{sec.title} subtotal</td>
+                      <td className="px-6 py-2 text-sm font-semibold text-[#1a1c1e] text-right data-mono">{fmt(sec.subtotal)}</td>
+                    </tr>
+                  </Fragment>
+                ))
+              : lineItems.map((item: any) => (
+                  <tr key={item.id}>
+                    <td className="px-6 py-3 text-sm text-[#1a1c1e]">{item.description}</td>
+                    <td className="px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
+                    <td className="px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
+                    <td className="px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(item.amount)}</td>
+                  </tr>
+                ))}
           </tbody>
         </table>
 
@@ -98,7 +166,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               {invoice.discount_value > 0 && (
                 <div className="flex justify-between text-[#5a5c62]">
                   <span>Discount {invoice.discount_type === 'percentage' ? `(${invoice.discount_value}%)` : ''}</span>
-                  <span className="data-mono">- {fmt(invoice.discount_type === 'percentage' ? invoice.subtotal * (invoice.discount_value / 100) : invoice.discount_value)}</span>
+                  <span className="data-mono">- {fmt(discountAmountFor(invoice.subtotal, invoice.discount_type, invoice.discount_value))}</span>
                 </div>
               )}
               {invoice.gct_rate > 0 && <div className="flex justify-between text-[#5a5c62]"><span>GCT (15%)</span><span className="data-mono">{fmt(invoice.gct_amount)}</span></div>}

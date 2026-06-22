@@ -1,10 +1,13 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ClientDialog } from '@/components/clients/ClientDialog'
 import type { Client } from '@/types'
 
 export function ClientsTable({ clients }: { clients: Client[] }) {
+  const router = useRouter()
   const [dialog, setDialog] = useState<{ open: boolean; client?: Client }>({ open: false })
+  const openClient = (id: string) => router.push(`/clients/${id}`)
 
   return (
     <>
@@ -21,7 +24,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
           <>
             <div className="block lg:hidden space-y-3 p-4">
               {clients.map(client => (
-                <div key={client.id} onClick={() => setDialog({ open: true, client })}
+                <div key={client.id} onClick={() => openClient(client.id)}
                   className="block bg-white rounded-xl border border-[#e0e0e3] shadow-[0px_4px_20px_rgba(26,28,30,0.04)] p-4 cursor-pointer">
                   <div className="flex justify-between items-start">
                     <div>
@@ -51,7 +54,7 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {clients.map(client => (
-                    <tr key={client.id} onClick={() => setDialog({ open: true, client })} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <tr key={client.id} onClick={() => openClient(client.id)} className="hover:bg-gray-50 cursor-pointer transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">{client.name}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{client.company ?? '—'}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{client.email ?? '—'}</td>

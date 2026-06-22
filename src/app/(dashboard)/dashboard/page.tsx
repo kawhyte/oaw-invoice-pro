@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     supabase.from('projects').select('*, clients(name)').order('updated_at', { ascending: false }),
     supabase
       .from('invoices')
-      .select('*, projects(title, clients(name))')
+      .select('*, projects(title, clients(name)), clients(name)')
       .order('created_at', { ascending: false })
       .limit(5),
   ])

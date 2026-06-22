@@ -17,7 +17,9 @@ export async function deleteNoteAction(noteId: string, projectId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
-  await supabase.from('project_notes').delete().eq('id', noteId)
+  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
+  if (!project) throw new Error('Not found')
+  await supabase.from('project_notes').delete().eq('id', noteId).eq('project_id', projectId)
   revalidatePath(`/projects/${projectId}`)
 }
 
@@ -41,6 +43,8 @@ export async function saveFileMetaAction(projectId: string, name: string, storag
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
+  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
+  if (!project) throw new Error('Not found')
   await supabase.from('project_files').insert({ project_id: projectId, name, storage_path: storagePath, size_bytes: sizeBytes })
   revalidatePath(`/projects/${projectId}`)
 }
@@ -49,6 +53,16 @@ export async function deleteFileAction(fileId: string, storagePath: string, proj
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
+  // Verify the file belongs to a project owned by this user before touching storage/db.
+  const { data: file } = await supabase
+    .from('project_files')
+    .select('id, projects!inner(user_id)')
+    .eq('id', fileId)
+    .eq('project_id', projectId)
+    .single()
+  if (!file || (file.projects as unknown as { user_id: string })?.user_id !== user.id) {
+    throw new Error('Not found')
+  }
   const service = createServiceClient()
   await service.storage.from('project-files').remove([storagePath])
   await supabase.from('project_files').delete().eq('id', fileId)

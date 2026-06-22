@@ -18,6 +18,9 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   if (!invoice) redirect('/invoices')
 
   if (invoice.status === 'paid') redirect(`/invoices/${id}`)
+  // Combined invoices (no single project) can't be edited in the standard form —
+  // use "Separate" on the detail page to split them back into editable drafts.
+  if (invoice.project_id === null) redirect(`/invoices/${id}`)
 
   const { data: bizSettings } = await supabase
     .from('business_settings')
