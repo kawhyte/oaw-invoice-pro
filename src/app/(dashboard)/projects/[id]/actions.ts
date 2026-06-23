@@ -23,6 +23,66 @@ export async function deleteNoteAction(noteId: string, projectId: string) {
   revalidatePath(`/projects/${projectId}`)
 }
 
+// ---- Checklist tasks (available on all projects) ---------------------------
+
+async function assertProjectOwner(projectId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
+  if (!project) throw new Error('Not found')
+  return supabase
+}
+
+export async function addTaskAction(
+  projectId: string,
+  fields: { title: string; cost: number | null; due_date: string | null }
+) {
+  const supabase = await assertProjectOwner(projectId)
+  // New tasks sort to the bottom of the open list.
+  const { data: last } = await supabase
+    .from('project_tasks')
+    .select('sort_order')
+    .eq('project_id', projectId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  await supabase.from('project_tasks').insert({
+    project_id: projectId,
+    title: fields.title,
+    cost: fields.cost,
+    due_date: fields.due_date,
+    sort_order: (last?.sort_order ?? 0) + 1,
+  })
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function toggleTaskAction(projectId: string, taskId: string, completed: boolean) {
+  const supabase = await assertProjectOwner(projectId)
+  await supabase.from('project_tasks').update({ completed }).eq('id', taskId).eq('project_id', projectId)
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function updateTaskAction(
+  projectId: string,
+  taskId: string,
+  fields: { title: string; cost: number | null; due_date: string | null }
+) {
+  const supabase = await assertProjectOwner(projectId)
+  await supabase
+    .from('project_tasks')
+    .update({ title: fields.title, cost: fields.cost, due_date: fields.due_date })
+    .eq('id', taskId)
+    .eq('project_id', projectId)
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function deleteTaskAction(projectId: string, taskId: string) {
+  const supabase = await assertProjectOwner(projectId)
+  await supabase.from('project_tasks').delete().eq('id', taskId).eq('project_id', projectId)
+  revalidatePath(`/projects/${projectId}`)
+}
+
 export async function rotateShareTokenAction(projectId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

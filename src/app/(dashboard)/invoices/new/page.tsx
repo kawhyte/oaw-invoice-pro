@@ -8,7 +8,7 @@ export default async function NewInvoicePage() {
   if (!user) redirect('/login')
 
   const [{ data: projects }, { data: bizSettings }] = await Promise.all([
-    supabase.from('projects').select('*, clients(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('projects').select('*, clients(*)').eq('user_id', user.id).eq('is_personal', false).order('created_at', { ascending: false }),
     supabase.from('business_settings').select('*').eq('user_id', user.id).single(),
   ])
 

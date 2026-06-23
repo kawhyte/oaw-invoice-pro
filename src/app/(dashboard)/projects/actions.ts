@@ -10,10 +10,14 @@ export async function createProjectAction(formData: FormData): Promise<{ geocode
 
   const address = formData.get('location_address') as string
   const coords = address ? await geocodeAddress(address) : null
+  const isPersonal = formData.get('is_personal') === 'true'
+  const budgetRaw = formData.get('budget') as string
 
   await supabase.from('projects').insert({
     user_id: user.id,
-    client_id: formData.get('client_id') as string,
+    client_id: isPersonal ? null : (formData.get('client_id') as string),
+    is_personal: isPersonal,
+    budget: isPersonal && budgetRaw ? Number(budgetRaw) : null,
     title: formData.get('title') as string,
     description: formData.get('description') as string || null,
     status: formData.get('status') as string,
@@ -33,9 +37,13 @@ export async function updateProjectAction(id: string, formData: FormData): Promi
 
   const address = formData.get('location_address') as string
   const coords = address ? await geocodeAddress(address) : null
+  const isPersonal = formData.get('is_personal') === 'true'
+  const budgetRaw = formData.get('budget') as string
 
   await supabase.from('projects').update({
-    client_id: formData.get('client_id') as string,
+    client_id: isPersonal ? null : (formData.get('client_id') as string),
+    is_personal: isPersonal,
+    budget: isPersonal && budgetRaw ? Number(budgetRaw) : null,
     title: formData.get('title') as string,
     description: formData.get('description') as string || null,
     status: formData.get('status') as string,

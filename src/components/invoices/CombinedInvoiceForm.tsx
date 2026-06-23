@@ -163,7 +163,7 @@ export function CombinedInvoiceForm({ client, projects, bizSettings }: Props) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[#5a5c62] mb-1">Currency</label>
-            <select value={currency} onChange={e => { setCurrency(e.target.value as 'JMD' | 'USD'); setUseGct(e.target.value === 'JMD') }} className={INPUT}>
+            <select value={currency} onChange={e => { setCurrency(e.target.value as 'JMD' | 'USD'); setUseGct(e.target.value === 'JMD') }} className={`${INPUT} select-field`}>
               <option value="JMD">JMD</option>
               <option value="USD">USD</option>
             </select>
@@ -257,7 +257,7 @@ export function CombinedInvoiceForm({ client, projects, bizSettings }: Props) {
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="space-y-3">
           <h2 className="label-caps">Discount</h2>
-          <select value={discountType} onChange={e => { setDiscountType(e.target.value as DiscountType); setDiscountValue('') }} className={INPUT}>
+          <select value={discountType} onChange={e => { setDiscountType(e.target.value as DiscountType); setDiscountValue('') }} className={`${INPUT} select-field`}>
             <option value="none">No Discount</option>
             <option value="percentage">Percentage (%)</option>
             <option value="fixed">Fixed Amount ({currency})</option>

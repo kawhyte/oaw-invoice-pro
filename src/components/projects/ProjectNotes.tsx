@@ -4,9 +4,9 @@ import { Eye } from 'lucide-react'
 import { addNoteAction, deleteNoteAction } from '@/app/(dashboard)/projects/[id]/actions'
 import type { ProjectNote } from '@/types'
 
-interface Props { projectId: string; notes: ProjectNote[] }
+interface Props { projectId: string; notes: ProjectNote[]; showClientBadge?: boolean }
 
-export function ProjectNotes({ projectId, notes }: Props) {
+export function ProjectNotes({ projectId, notes, showClientBadge = true }: Props) {
   const [content, setContent] = useState('')
   const [isPending, startTransition] = useTransition()
 
@@ -28,10 +28,12 @@ export function ProjectNotes({ projectId, notes }: Props) {
     <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
         <h2 className="text-sm font-semibold text-gray-900">Progress Notes</h2>
-        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">
-          <Eye className="w-3 h-3" />
-          Always visible to client
-        </span>
+        {showClientBadge && (
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">
+            <Eye className="w-3 h-3" />
+            Always visible to client
+          </span>
+        )}
       </div>
       <div className="p-6 space-y-4">
         <form onSubmit={handleSubmit} className="flex gap-2">

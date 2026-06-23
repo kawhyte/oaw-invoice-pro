@@ -6,6 +6,8 @@ import { ProjectNotes } from '@/components/projects/ProjectNotes'
 import { ShareLinkPanel } from '@/components/projects/ShareLinkPanel'
 import { FileUpload } from '@/components/projects/FileUpload'
 import { FileList } from '@/components/projects/FileList'
+import { TaskChecklist } from '@/components/projects/TaskChecklist'
+import { BudgetTracker } from '@/components/projects/BudgetTracker'
 import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { Eye } from 'lucide-react'
@@ -17,18 +19,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }, { data: invoices }] = await Promise.all([
+  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }, { data: invoices }, { data: tasks }] = await Promise.all([
     supabase.from('projects').select('*, clients(*)').eq('id', id).eq('user_id', user.id).single(),
     supabase.from('project_notes').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('project_files').select('*').eq('project_id', id).order('uploaded_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
     supabase.from('invoices').select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id').eq('project_id', id).order('created_at', { ascending: false }),
+    supabase.from('project_tasks').select('*').eq('project_id', id).order('sort_order', { ascending: true }),
   ])
 
   if (!project) notFound()
 
+  // Personal projects are never billed — skip the combined-invoice lookup entirely.
   // Combined invoices touch this project via their line items (project_id is null on the invoice).
-  const { data: combinedLi } = await supabase.from('invoice_line_items').select('invoice_id').eq('project_id', id)
+  const { data: combinedLi } = project.is_personal
+    ? { data: [] as { invoice_id: string }[] }
+    : await supabase.from('invoice_line_items').select('invoice_id').eq('project_id', id)
   const combinedIds = [...new Set((combinedLi ?? []).map((r: { invoice_id: string }) => r.invoice_id))]
   const { data: combinedInvoices } = combinedIds.length
     ? await supabase
@@ -58,7 +64,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">{project.title}</h1>
             <StatusChip status={project.status} />
           </div>
-          <p className="text-sm text-[#5a5c62] mt-0.5">{(project.clients as any)?.name}</p>
+          <p className="text-sm text-[#5a5c62] mt-0.5">
+            {project.is_personal ? 'Personal project' : (project.clients as any)?.name}
+          </p>
         </div>
         <ProjectDetailHeader project={project as any} clients={allClients ?? []} />
       </div>
@@ -80,14 +88,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
+      {project.is_personal && <BudgetTracker budget={project.budget} tasks={tasks ?? []} />}
+
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <h2 className="label-caps">Files</h2>
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">
-              <Eye className="w-3 h-3" />
-              Always visible to client
-            </span>
+            {!project.is_personal && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">
+                <Eye className="w-3 h-3" />
+                Always visible to client
+              </span>
+            )}
           </div>
           <FileUpload projectId={id} userId={user.id} />
         </div>
@@ -96,6 +108,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
+      {!project.is_personal && (
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#e0e0e3]">
           <h2 className="label-caps">Invoices</h2>
@@ -156,9 +169,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </div>
       </div>
+      )}
 
-      <ProjectNotes projectId={id} notes={notes ?? []} />
-      <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.length} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} />
+      <TaskChecklist projectId={id} tasks={tasks ?? []} />
+
+      <ProjectNotes projectId={id} notes={notes ?? []} showClientBadge={!project.is_personal} />
+      {!project.is_personal && (
+        <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.length} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} />
+      )}
     </div>
   )
 }

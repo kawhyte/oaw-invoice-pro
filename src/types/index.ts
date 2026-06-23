@@ -27,11 +27,16 @@ export interface Client {
 export interface Project {
   id: string
   user_id: string
-  client_id: string
+  /** NULL for personal (clientless) projects. */
+  client_id: string | null
   title: string
   description: string | null
   status: ProjectStatus
   job_type: string | null
+  /** True for the owner's own projects (not billed, no client). */
+  is_personal: boolean
+  /** Optional total budget — used by the personal-project budget tracker. */
+  budget: number | null
   share_token: string
   show_financials_on_share: boolean
   location_address: string | null
@@ -40,6 +45,17 @@ export interface Project {
   created_at: string
   updated_at: string
   clients?: Client
+}
+
+export interface ProjectTask {
+  id: string
+  project_id: string
+  title: string
+  cost: number | null
+  due_date: string | null
+  completed: boolean
+  sort_order: number
+  created_at: string
 }
 
 export interface ProjectNote {

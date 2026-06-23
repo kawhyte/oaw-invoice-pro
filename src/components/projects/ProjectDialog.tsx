@@ -16,11 +16,14 @@ interface Props {
   project?: Project
   clients: Client[]
   onClose: () => void
+  /** Preselects the Personal tab when creating from the Personal projects tab. */
+  defaultIsPersonal?: boolean
 }
 
-export function ProjectDialog({ project, clients, onClose }: Props) {
+export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = false }: Props) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const [isPersonal, setIsPersonal] = useState(project?.is_personal ?? defaultIsPersonal)
   const [clientId, setClientId] = useState(project?.client_id ?? '')
   const [status, setStatus] = useState(project?.status ?? 'discovery')
   const [geocodeWarning, setGeocodeWarning] = useState(false)
@@ -59,29 +62,51 @@ export function ProjectDialog({ project, clients, onClose }: Props) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <input type="hidden" name="is_personal" value={isPersonal ? 'true' : 'false'} />
+          {/* Client vs Personal toggle */}
+          <div className="grid grid-cols-2 gap-1 p-1 bg-[#f8f9fa] border border-[#e0e0e3] rounded-lg">
+            <button type="button" onClick={() => setIsPersonal(false)}
+              className={`py-1.5 text-sm font-medium rounded-md transition-colors ${!isPersonal ? 'bg-white text-[#1a1c1e] shadow-sm' : 'text-[#8a8c94] hover:text-[#5a5c62]'}`}>
+              Client Project
+            </button>
+            <button type="button" onClick={() => setIsPersonal(true)}
+              className={`py-1.5 text-sm font-medium rounded-md transition-colors ${isPersonal ? 'bg-white text-[#1a1c1e] shadow-sm' : 'text-[#8a8c94] hover:text-[#5a5c62]'}`}>
+              Personal
+            </button>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Title *</label>
             <input name="title" required defaultValue={project?.title} className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-1">Client *</label>
-            <select name="client_id" required value={clientId} onChange={e => setClientId(e.target.value)}
-              className={`w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e] ${clientId === '' ? 'text-gray-400' : 'text-gray-900'}`}>
-              <option value="">Select a client</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
+          {isPersonal ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Budget</label>
+              <input name="budget" type="number" min="0" step="0.01" defaultValue={project?.budget ?? ''}
+                placeholder="e.g. 500000"
+                className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
+              <p className="text-xs text-gray-400 mt-1">Optional. Spend rolls up from your checklist item costs.</p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Client *</label>
+              <select name="client_id" required={!isPersonal} value={clientId} onChange={e => setClientId(e.target.value)}
+                className={`select-field w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e] ${clientId === '' ? 'text-gray-400' : 'text-gray-900'}`}>
+                <option value="">Select a client</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-800 mb-1">Status</label>
             <select name="status" value={status} onChange={e => setStatus(e.target.value as any)}
-              className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
+              className="select-field w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
               {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
             <select name="job_type" defaultValue={project?.job_type ?? ''}
-              className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
+              className="select-field w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
               <option value="">— Select type —</option>
               {JOB_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>

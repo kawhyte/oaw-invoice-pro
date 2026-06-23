@@ -70,7 +70,7 @@ export function ClientDialog({ client, onClose }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-800 mb-1">Currency</label>
                 <select name="currency" defaultValue={client?.currency ?? ''}
-                  className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
+                  className="select-field w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
                   <option value="">— Select —</option>
                   <option value="JMD">JMD</option>
                   <option value="USD">USD</option>
