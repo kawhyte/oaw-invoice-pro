@@ -1,11 +1,31 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { DiscountType } from '@/types'
 import { lineSubtotal, computeTotals, computeStatus, round2 } from '@/lib/invoiceCalc'
+import { renderInvoicePdf } from '@/lib/invoicePdf'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
+
+/**
+ * Removes any saved invoice PDFs (project_files rows + their storage objects)
+ * for the given invoices. Call BEFORE deleting an invoice so its saved copy
+ * never lingers as an orphan in the bucket. The DB rows are also cleared by the
+ * invoice_id FK cascade, but storage objects must be removed explicitly.
+ */
+async function cleanupSavedInvoicePdfs(supabase: SupabaseServer, invoiceIds: string[]) {
+  if (invoiceIds.length === 0) return
+  const { data: files } = await supabase
+    .from('project_files')
+    .select('id, storage_path')
+    .in('invoice_id', invoiceIds)
+  if (!files || files.length === 0) return
+  const service = createServiceClient()
+  await service.storage.from('project-files').remove(files.map(f => f.storage_path))
+  await supabase.from('project_files').delete().in('id', files.map(f => f.id))
+}
 
 /**
  * Next invoice number for a user, based on the MAX existing INV-#### (not a count),
@@ -202,8 +222,80 @@ export async function deleteInvoiceAction(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
+  await cleanupSavedInvoicePdfs(supabase, [id])
   await supabase.from('invoices').delete().eq('id', id).eq('user_id', user.id)
   revalidatePath('/invoices')
+}
+
+/**
+ * Generates the invoice PDF server-side and saves it straight into a project's
+ * Files (the `project-files` bucket + `project_files` table) — the same place a
+ * manual upload lands, so it's immediately visible to the client on the share
+ * page. Replaces any previously saved copy of this invoice (one PDF per
+ * invoice, no stale duplicates).
+ *
+ * `projectId` is the target project: for single-project invoices it must equal
+ * the invoice's project; for combined invoices it must be one of the projects
+ * the invoice bills (the user picks in the UI).
+ */
+export async function uploadInvoicePdfAction(invoiceId: string, projectId: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  // Invoice must belong to the user.
+  const { data: invoice } = await supabase
+    .from('invoices')
+    .select('id, invoice_number, project_id, invoice_line_items(project_id)')
+    .eq('id', invoiceId)
+    .eq('user_id', user.id)
+    .single()
+  if (!invoice) throw new Error('Not found')
+
+  // Target project must belong to the user...
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', user.id)
+    .single()
+  if (!project) throw new Error('Not found')
+
+  // ...and be a valid target for this invoice.
+  if (invoice.project_id !== null) {
+    if (invoice.project_id !== projectId) throw new Error('Invalid project for this invoice')
+  } else {
+    const lineProjectIds = new Set(
+      ((invoice.invoice_line_items ?? []) as { project_id: string | null }[])
+        .map(li => li.project_id)
+        .filter((id): id is string => !!id)
+    )
+    if (!lineProjectIds.has(projectId)) throw new Error('Invalid project for this invoice')
+  }
+
+  const result = await renderInvoicePdf(supabase, invoiceId, user.id)
+  if (!result) throw new Error('Not found')
+
+  // Replace any previously saved copy (storage object + row) for this invoice.
+  await cleanupSavedInvoicePdfs(supabase, [invoiceId])
+
+  const service = createServiceClient()
+  const storagePath = `${user.id}/${projectId}/${Date.now()}-${invoice.invoice_number}.pdf`
+  const { error: uploadError } = await service.storage
+    .from('project-files')
+    .upload(storagePath, result.buffer, { contentType: 'application/pdf', upsert: false })
+  if (uploadError) throw new Error('Upload failed')
+
+  await supabase.from('project_files').insert({
+    project_id: projectId,
+    invoice_id: invoiceId,
+    name: `${invoice.invoice_number}.pdf`,
+    storage_path: storagePath,
+    size_bytes: result.buffer.length,
+  })
+
+  revalidatePath(`/projects/${projectId}`)
+  revalidatePath(`/invoices/${invoiceId}`)
 }
 
 /**
@@ -284,6 +376,8 @@ export async function separateInvoiceAction(invoiceId: string): Promise<void> {
     }
   }
 
+  // The combined invoice is going away; drop its saved PDF so it isn't orphaned.
+  await cleanupSavedInvoicePdfs(supabase, [invoiceId])
   await supabase.from('invoices').delete().eq('id', invoiceId).eq('user_id', user.id)
 
   revalidatePath('/invoices')
@@ -412,6 +506,7 @@ export async function createCombinedInvoiceAction(formData: FormData): Promise<s
 
   // Absorb (delete) the source DRAFT invoices so their work isn't double-billed.
   if (absorbIds.length > 0) {
+    await cleanupSavedInvoicePdfs(supabase, absorbIds)
     await supabase
       .from('invoices')
       .delete()

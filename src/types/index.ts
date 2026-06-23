@@ -68,6 +68,7 @@ export interface ProjectNote {
 export interface ProjectFile {
   id: string
   project_id: string
+  invoice_id?: string | null
   name: string
   storage_path: string
   size_bytes: number | null

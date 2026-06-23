@@ -1,22 +1,61 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { X } from 'lucide-react'
+import Link from 'next/link'
+import { X, Check } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { deleteInvoiceAction, markSentAction } from '@/app/(dashboard)/invoices/actions'
+import { deleteInvoiceAction, markSentAction, uploadInvoicePdfAction } from '@/app/(dashboard)/invoices/actions'
 
 const InvoicePDFPreview = dynamic(
   () => import('./InvoicePDFPreview').then(m => m.InvoicePDFPreview),
   { ssr: false }
 )
 
-export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status }: { invoiceId: string; invoiceNumber: string; clientEmail: string | null; status: string }) {
+interface Props {
+  invoiceId: string
+  invoiceNumber: string
+  clientEmail: string | null
+  status: string
+  saveTargets: { id: string; title: string }[]
+  savedFile: { id: string; projectId: string } | null
+}
+
+export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, saveTargets, savedFile }: Props) {
   const router = useRouter()
   // Email feature — paused for future sprint (see button comment below)
   // const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [isPending, startTransition] = useTransition()
   const [previewOpen, setPreviewOpen] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  // ---- "Save for client" state ----
+  const canSave = saveTargets.length > 0
+  const [isSaving, startSaving] = useTransition()
+  const [saveState, setSaveState] = useState<'idle' | 'success' | 'error'>('idle')
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    savedFile?.projectId ?? saveTargets[0]?.id ?? ''
+  )
+  const alreadySaved = savedFile !== null
+  const savedTarget = saveTargets.find(t => t.id === selectedProjectId)
+
+  function openPreview() {
+    setSaveState('idle')
+    setPreviewOpen(true)
+  }
+
+  function handleSave() {
+    if (!selectedProjectId) return
+    setSaveState('idle')
+    startSaving(async () => {
+      try {
+        await uploadInvoicePdfAction(invoiceId, selectedProjectId)
+        setSaveState('success')
+        router.refresh()
+      } catch {
+        setSaveState('error')
+      }
+    })
+  }
 
   // Email feature — paused for future sprint (see button comment below)
   // async function handleEmail() {
@@ -49,7 +88,7 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status }
           </button>
         )}
         <button
-          onClick={() => setPreviewOpen(true)}
+          onClick={openPreview}
           className="px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] transition-colors"
         >
           Preview
@@ -58,6 +97,14 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status }
           className="px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] transition-colors">
           Download PDF
         </a>
+        {canSave && (
+          <button
+            onClick={openPreview}
+            className="px-3 py-1.5 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] transition-colors"
+          >
+            {alreadySaved ? 'Update Client Copy' : 'Save for Client'}
+          </button>
+        )}
         {/* Email to Client — paused for future sprint.
             Backend route /api/invoice/[id]/email is fully implemented and ready.
             Re-enable by uncommenting this block when the feature goes live.
@@ -135,6 +182,75 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status }
             <div className="flex-1 overflow-y-auto bg-[#f0f0f0] flex flex-col items-center py-4 gap-4">
               <InvoicePDFPreview invoiceId={invoiceId} />
             </div>
+
+            {/* Save-for-client footer: review the PDF above, then send it to the project. */}
+            {canSave && (
+              <div className="border-t border-[#e0e0e3] bg-white px-5 py-3">
+                {saveState === 'success' ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-medium text-[#2a5130]">
+                      <Check size={16} /> Saved to {savedTarget?.title ?? 'project'} — your client can see it.
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {savedTarget && (
+                        <Link
+                          href={`/projects/${savedTarget.id}`}
+                          className="px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] transition-colors text-center"
+                        >
+                          View in project
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => setPreviewOpen(false)}
+                        className="px-3 py-1.5 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] transition-colors"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex flex-col gap-1 sm:flex-1">
+                      {saveTargets.length > 1 ? (
+                        <label className="flex flex-col gap-1">
+                          <span className="text-xs text-[#5a5c62]">Save this invoice to which project?</span>
+                          <select
+                            value={selectedProjectId}
+                            onChange={(e) => setSelectedProjectId(e.target.value)}
+                            disabled={isSaving}
+                            className="w-full sm:max-w-xs px-3 py-2 text-sm border border-[#e0e0e3] rounded-lg bg-white text-[#1a1c1e] disabled:opacity-50"
+                          >
+                            {saveTargets.map(t => (
+                              <option key={t.id} value={t.id}>{t.title}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <span className="text-xs text-[#5a5c62]">
+                          Uploads to <span className="font-medium text-[#1a1c1e]">{savedTarget?.title}</span> and shares it with your client.
+                        </span>
+                      )}
+                      {saveState === 'error' && (
+                        <span className="text-xs text-red-500">Couldn’t save — please try again.</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving || !selectedProjectId}
+                      className="w-full sm:w-auto px-4 py-2 text-sm font-medium bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 transition-colors shrink-0"
+                    >
+                      {isSaving
+                        ? 'Saving…'
+                        : saveState === 'error'
+                        ? 'Retry'
+                        : alreadySaved
+                        ? 'Update saved copy'
+                        : 'Looks good — Save for client'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

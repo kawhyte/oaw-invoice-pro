@@ -41,6 +41,30 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: invoice.currency }).format(n)
   const owing = invoice.total - invoice.amount_paid
 
+  // Projects this invoice's PDF can be saved to: the single project, or — for a
+  // combined invoice — each project it bills (deduped, named by section title).
+  const saveTargets: { id: string; title: string }[] = isCombined
+    ? Array.from(
+        (lineItems as { project_id: string | null; section_title: string | null }[]).reduce((m, li) => {
+          if (li.project_id && !m.has(li.project_id)) m.set(li.project_id, li.section_title || 'Project')
+          return m
+        }, new Map<string, string>()),
+        ([id, title]) => ({ id, title })
+      )
+    : project
+    ? [{ id: project.id, title: project.title }]
+    : []
+
+  // Whether this invoice already has a saved PDF (drives "Update saved copy").
+  const { data: savedFiles } = await supabase
+    .from('project_files')
+    .select('id, project_id')
+    .eq('invoice_id', id)
+    .limit(1)
+  const savedFile = (savedFiles?.[0] as { id: string; project_id: string } | undefined)
+    ? { id: savedFiles![0].id, projectId: savedFiles![0].project_id }
+    : null
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -92,7 +116,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           {isCombined && invoice.status === 'draft' && (
             <SeparateInvoiceButton invoiceId={id} projectCount={sections.length} />
           )}
-          <InvoiceActions invoiceId={id} invoiceNumber={invoice.invoice_number} clientEmail={client?.email ?? null} status={invoice.status} />
+          <InvoiceActions invoiceId={id} invoiceNumber={invoice.invoice_number} clientEmail={client?.email ?? null} status={invoice.status} saveTargets={saveTargets} savedFile={savedFile} />
         </div>
       </div>
 
