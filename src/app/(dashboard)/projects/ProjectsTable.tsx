@@ -25,9 +25,9 @@ export function ProjectsTable({ projects, clients }: Props) {
   const visible = isPersonal ? personalProjects : clientProjects
 
   return (
-    <>
+    <div className="overflow-x-hidden">
       {/* Tabs: Client vs Personal */}
-      <div className="grid grid-cols-2 gap-1 p-1 bg-white border border-[#e0e0e3] rounded-xl shadow-card mb-4 max-w-md">
+      <div className="w-full grid grid-cols-2 gap-1 p-1 bg-white border border-[#e0e0e3] rounded-xl shadow-card mb-4 max-w-md">
         <button onClick={() => setTab('client')}
           className={`py-2 text-sm font-medium rounded-lg transition-colors ${!isPersonal ? 'bg-[#715a3e] text-white' : 'text-[#5a5c62] hover:bg-[#f8f9fa]'}`}>
           Client Projects
@@ -64,7 +64,7 @@ export function ProjectsTable({ projects, clients }: Props) {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-[#1a1c1e] truncate">{project.title}</p>
                       {isPersonal ? (
-                        <p className="text-sm text-[#5a5c62]">
+                        <p className="text-sm text-[#5a5c62] truncate">
                           {project.budget != null ? `Budget ${formatMoney(Number(project.budget))}` : (project.job_type ?? '—')}
                         </p>
                       ) : (
@@ -131,6 +131,6 @@ export function ProjectsTable({ projects, clients }: Props) {
         )}
       </div>
       {showNew && <ProjectDialog clients={clients} onClose={() => setShowNew(false)} defaultIsPersonal={isPersonal} />}
-    </>
+    </div>
   )
 }
