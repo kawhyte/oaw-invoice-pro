@@ -91,8 +91,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       {project.is_personal && <BudgetTracker budget={project.budget} tasks={tasks ?? []} />}
 
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <h2 className="label-caps">Files</h2>
             {!project.is_personal && (
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">

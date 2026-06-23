@@ -2,10 +2,12 @@
 import { useState, useRef, useTransition } from 'react'
 import { saveSettingsAction, saveLogoUrlAction, removeLogoAction } from './actions'
 import { createClient } from '@/lib/supabase/client'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import type { BusinessSettings } from '@/types'
 
 export function SettingsForm({ settings }: { settings: BusinessSettings | null }) {
   const [isPending, startTransition] = useTransition()
+  const confirm = useConfirm()
   const [logoUrl, setLogoUrl] = useState<string | null>(settings?.logo_url ?? null)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
@@ -70,8 +72,8 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
     }
   }
 
-  function handleRemoveLogo() {
-    if (!confirm('Remove your logo?')) return
+  async function handleRemoveLogo() {
+    if (!(await confirm({ title: 'Remove your logo?', description: 'Your invoices and header will fall back to your business initials.', confirmLabel: 'Remove', variant: 'danger' }))) return
     startTransition(async () => {
       await removeLogoAction()
       setLogoUrl(null)

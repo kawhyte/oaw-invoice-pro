@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { NavLinks } from '@/components/NavLinks'
 import { NavDropdown } from '@/components/NavDropdown'
 import { MobileNav } from '@/components/MobileNav'
+import { ConfirmProvider } from '@/components/ui/ConfirmDialog'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -46,11 +47,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavDropdown
             logoUrl={bizSettings?.logo_url ?? null}
             businessName={bizSettings?.business_name ?? null}
+            align="down"
           />
         </header>
 
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 lg:pb-8">
-          {children}
+          <ConfirmProvider>{children}</ConfirmProvider>
         </main>
       </div>
 

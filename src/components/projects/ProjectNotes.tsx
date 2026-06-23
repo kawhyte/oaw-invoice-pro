@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react'
 import { Eye } from 'lucide-react'
 import { addNoteAction, deleteNoteAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import type { ProjectNote } from '@/types'
 
 interface Props { projectId: string; notes: ProjectNote[]; showClientBadge?: boolean }
@@ -9,6 +10,7 @@ interface Props { projectId: string; notes: ProjectNote[]; showClientBadge?: boo
 export function ProjectNotes({ projectId, notes, showClientBadge = true }: Props) {
   const [content, setContent] = useState('')
   const [isPending, startTransition] = useTransition()
+  const confirm = useConfirm()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -19,8 +21,8 @@ export function ProjectNotes({ projectId, notes, showClientBadge = true }: Props
     })
   }
 
-  function handleDelete(noteId: string) {
-    if (!confirm('Delete this note?')) return
+  async function handleDelete(noteId: string) {
+    if (!(await confirm({ title: 'Delete this note?', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => { await deleteNoteAction(noteId, projectId) })
   }
 

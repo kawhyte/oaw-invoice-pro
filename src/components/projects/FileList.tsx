@@ -1,6 +1,7 @@
 'use client'
 import { useTransition } from 'react'
 import { deleteFileAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import type { ProjectFile } from '@/types'
 
 interface FileWithUrl extends ProjectFile { signedUrl: string }
@@ -14,9 +15,10 @@ function formatBytes(bytes: number | null) {
 
 export function FileList({ projectId, files }: Props) {
   const [isPending, startTransition] = useTransition()
+  const confirm = useConfirm()
 
-  function handleDelete(fileId: string, storagePath: string) {
-    if (!confirm('Delete this file?')) return
+  async function handleDelete(fileId: string, storagePath: string) {
+    if (!(await confirm({ title: 'Delete this file?', description: 'This removes the file from the project and the client’s shared view.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => { await deleteFileAction(fileId, storagePath, projectId) })
   }
 

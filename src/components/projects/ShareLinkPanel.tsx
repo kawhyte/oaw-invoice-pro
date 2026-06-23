@@ -2,12 +2,14 @@
 import { useState, useTransition } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { rotateShareTokenAction, toggleFinancialsAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; noteCount: number; invoiceCount: number }
 
 export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, noteCount, invoiceCount }: Props) {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const confirm = useConfirm()
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareUrl = `${origin}/share/${shareToken}`
 
@@ -17,8 +19,8 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function handleRotate() {
-    if (!confirm('Rotate share link? The old link will stop working immediately.')) return
+  async function handleRotate() {
+    if (!(await confirm({ title: 'Rotate share link?', description: 'The old link will stop working immediately.', confirmLabel: 'Rotate link' }))) return
     startTransition(async () => { await rotateShareTokenAction(projectId) })
   }
 

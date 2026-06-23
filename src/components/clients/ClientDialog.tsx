@@ -1,6 +1,7 @@
 'use client'
 import { useRef, useState, useTransition } from 'react'
 import { createClientAction, updateClientAction, deleteClientAction } from '@/app/(dashboard)/clients/actions'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import type { Client } from '@/types'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 export function ClientDialog({ client, onClose }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
   const [isPending, startTransition] = useTransition()
+  const confirm = useConfirm()
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -22,9 +24,9 @@ export function ClientDialog({ client, onClose }: Props) {
     })
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!client) return
-    if (!confirm('Delete this client? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Delete this client?', description: 'This permanently deletes the client and cannot be undone.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => {
       await deleteClientAction(client.id)
       onClose()

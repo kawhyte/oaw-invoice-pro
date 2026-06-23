@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createProjectAction, updateProjectAction, deleteProjectAction } from '@/app/(dashboard)/projects/actions'
 import type { Client, Project } from '@/types'
 import { JOB_TYPES } from '@/types'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 const STATUS_OPTIONS = [
   { value: 'discovery', label: 'Discovery' },
@@ -27,6 +28,12 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
   const [clientId, setClientId] = useState(project?.client_id ?? '')
   const [status, setStatus] = useState(project?.status ?? 'discovery')
   const [geocodeWarning, setGeocodeWarning] = useState(false)
+  const confirm = useConfirm()
+
+  // A saved job type that's no longer in JOB_TYPES (the user retired it) is kept
+  // as a selectable option so editing the project never silently wipes it.
+  const currentJobType = project?.job_type ?? ''
+  const jobTypeRetired = currentJobType !== '' && !(JOB_TYPES as readonly string[]).includes(currentJobType)
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -44,9 +51,9 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
     })
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!project) return
-    if (!confirm('Delete this project? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Delete this project?', description: 'This permanently deletes the project and cannot be undone.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => {
       await deleteProjectAction(project.id)
       onClose()
@@ -105,9 +112,10 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
-            <select name="job_type" defaultValue={project?.job_type ?? ''}
+            <select name="job_type" defaultValue={currentJobType}
               className="select-field w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]">
               <option value="">— Select type —</option>
+              {jobTypeRetired && <option value={currentJobType}>{currentJobType} — retired</option>}
               {JOB_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>

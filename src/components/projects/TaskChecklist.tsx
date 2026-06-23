@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { addTaskAction, toggleTaskAction, deleteTaskAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import type { ProjectTask } from '@/types'
 
 interface Props { projectId: string; tasks: ProjectTask[] }
@@ -21,6 +22,7 @@ export function TaskChecklist({ projectId, tasks }: Props) {
   const [dueDate, setDueDate] = useState('')
   const [cost, setCost] = useState('')
   const [isPending, startTransition] = useTransition()
+  const confirm = useConfirm()
 
   // Open tasks first (by sort order), completed sink to the bottom.
   const ordered = [...tasks].sort((a, b) => {
@@ -49,8 +51,8 @@ export function TaskChecklist({ projectId, tasks }: Props) {
     startTransition(async () => { await toggleTaskAction(projectId, task.id, !task.completed) })
   }
 
-  function handleDelete(taskId: string) {
-    if (!confirm('Delete this item?')) return
+  async function handleDelete(taskId: string) {
+    if (!(await confirm({ title: 'Delete this item?', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => { await deleteTaskAction(projectId, taskId) })
   }
 

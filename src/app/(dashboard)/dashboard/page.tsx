@@ -5,6 +5,7 @@ import { FinancialChart } from '@/components/dashboard/FinancialChart'
 import { ProjectMap } from '@/components/dashboard/ProjectMap'
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices'
 import { RecentProjects } from '@/components/dashboard/RecentProjects'
+import { OverdueAlert } from '@/components/dashboard/OverdueAlert'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -31,12 +32,26 @@ export default async function DashboardPage() {
   }
   const stats = Object.entries(statsMap).map(([currency, v]) => ({ currency, ...v }))
 
+  // Overdue = past the due date with a remaining balance. Computed from due_date
+  // rather than stored status so it catches invoices that lapsed without re-saving.
+  const today = new Date().toISOString().split('T')[0]
+  const overdueInvoices = (invoices ?? []).filter(
+    (i) => i.due_date && i.due_date < today && Number(i.total) - Number(i.amount_paid) > 0
+  )
+  const overdueOwingMap: Record<string, number> = {}
+  for (const inv of overdueInvoices) {
+    overdueOwingMap[inv.currency] = (overdueOwingMap[inv.currency] ?? 0) + (Number(inv.total) - Number(inv.amount_paid))
+  }
+  const overdueOwingByCurrency = Object.entries(overdueOwingMap).map(([currency, owing]) => ({ currency, owing }))
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">Overview of your projects and billing</p>
       </div>
+
+      <OverdueAlert count={overdueInvoices.length} owingByCurrency={overdueOwingByCurrency} />
 
       <StatsCards stats={stats} invoiceCount={invoices?.length ?? 0} />
 
