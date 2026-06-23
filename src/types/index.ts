@@ -15,6 +15,33 @@ export const JOB_TYPES = [
 	"Other",
 ] as const;
 
+// Relative difficulty of each job type (higher = harder = more of his bandwidth).
+// Keyed by the JOB_TYPES label so it never touches stored job_type values.
+export const JOB_TYPE_WEIGHTS: Record<string, number> = {
+	"Working Drawings": 10,
+	"Measured Survey & Drawings": 8,
+	"Designing": 7,
+	"Renovation Drawings": 6,
+	"Electrical Drawings": 5,
+	"Plumbing Drawings": 4,
+	"Fire Drawings": 3,
+	"Other": 2,
+	// Legacy job-type values still stored on older projects, mapped onto the
+	// current scale: Construction→Working Drawings, Design→Designing, Painting→Other.
+	"Construction": 10,
+	"Design": 7,
+	"Painting": 2,
+};
+
+// How much of a project's full difficulty counts toward "current load" by phase.
+// A project just being scoped or wrapping up consumes less active bandwidth.
+export const STATUS_WEIGHT_FACTOR: Record<ProjectStatus, number> = {
+	discovery: 0.5,
+	in_progress: 1,
+	review: 0.5,
+	complete: 0,
+};
+
 export interface Client {
 	id: string;
 	user_id: string;
@@ -141,5 +168,7 @@ export interface BusinessSettings {
 	phone: string | null;
 	address: string | null;
 	logo_url: string | null;
+	/** Max workload points before the owner is at full capacity. NULL = use default. */
+	max_workload: number | null;
 	updated_at: string;
 }

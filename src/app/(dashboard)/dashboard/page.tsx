@@ -6,13 +6,15 @@ import { ProjectMap } from '@/components/dashboard/ProjectMap'
 import { RecentInvoices } from '@/components/dashboard/RecentInvoices'
 import { RecentProjects } from '@/components/dashboard/RecentProjects'
 import { OverdueAlert } from '@/components/dashboard/OverdueAlert'
+import { WorkloadCard } from '@/components/dashboard/WorkloadCard'
+import { currentLoad, DEFAULT_MAX_WORKLOAD } from '@/lib/capacity'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: invoices }, { data: projects }, { data: recentInvoices }] = await Promise.all([
+  const [{ data: invoices }, { data: projects }, { data: recentInvoices }, { data: settings }] = await Promise.all([
     supabase.from('invoices').select('*'),
     supabase.from('projects').select('*, clients(name)').order('updated_at', { ascending: false }),
     supabase
@@ -20,7 +22,12 @@ export default async function DashboardPage() {
       .select('*, projects(title, clients(name)), clients(name)')
       .order('created_at', { ascending: false })
       .limit(5),
+    supabase.from('business_settings').select('max_workload').eq('user_id', user.id).single(),
   ])
+
+  // Current workload = summed difficulty of active projects vs his ceiling.
+  const load = currentLoad(projects ?? [])
+  const maxWorkload = settings?.max_workload ?? DEFAULT_MAX_WORKLOAD
 
   // Compute stats grouped by currency
   const statsMap: Record<string, { total: number; paid: number; owing: number }> = {}
@@ -54,6 +61,8 @@ export default async function DashboardPage() {
       <OverdueAlert count={overdueInvoices.length} owingByCurrency={overdueOwingByCurrency} />
 
       <StatsCards stats={stats} invoiceCount={invoices?.length ?? 0} />
+
+      <WorkloadCard load={load} max={maxWorkload} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">

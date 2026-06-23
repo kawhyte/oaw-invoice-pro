@@ -14,10 +14,12 @@ export async function saveSettingsAction(formData: FormData) {
     email: (formData.get('email') as string) || null,
     phone: (formData.get('phone') as string) || null,
     address: (formData.get('address') as string) || null,
+    max_workload: formData.get('max_workload') ? Number(formData.get('max_workload')) : null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' })
 
   revalidatePath('/settings')
+  revalidatePath('/dashboard')
 }
 
 export async function saveLogoUrlAction(logoUrl: string) {

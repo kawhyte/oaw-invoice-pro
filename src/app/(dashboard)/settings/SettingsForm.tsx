@@ -155,6 +155,15 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
           className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
       </div>
 
+      <div className="pt-1 border-t border-gray-100">
+        <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Max Workload</label>
+        <input name="max_workload" type="number" min="1" step="1" inputMode="numeric"
+          defaultValue={settings?.max_workload ?? ''}
+          placeholder="30"
+          className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
+        <p className="text-xs text-gray-500 mt-1">Workload points before you&apos;re at full capacity, shown on the dashboard. Leave blank for the default (30).</p>
+      </div>
+
       <button type="submit" disabled={isPending}
         className="px-6 py-2 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 font-medium">
         {isPending ? 'Saving...' : 'Save Settings'}
