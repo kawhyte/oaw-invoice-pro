@@ -29,15 +29,37 @@ export default async function DashboardPage() {
   const load = currentLoad(projects ?? [])
   const maxWorkload = settings?.max_workload ?? DEFAULT_MAX_WORKLOAD
 
-  // Compute stats grouped by currency
+  // Drafts aren't real receivables — the client hasn't been billed — so they're
+  // excluded from every money figure on the dashboard (cards and the chart).
+  const billed = (invoices ?? []).filter((i) => i.status !== 'draft')
+
+  // Compute stats grouped by currency (drives the Owed card + Financial chart)
   const statsMap: Record<string, { total: number; paid: number; owing: number }> = {}
-  for (const inv of invoices ?? []) {
+  for (const inv of billed) {
     if (!statsMap[inv.currency]) statsMap[inv.currency] = { total: 0, paid: 0, owing: 0 }
     statsMap[inv.currency].total += inv.total
     statsMap[inv.currency].paid += inv.amount_paid
     statsMap[inv.currency].owing += inv.total - inv.amount_paid
   }
   const stats = Object.entries(statsMap).map(([currency, v]) => ({ currency, ...v }))
+
+  // Owed to you = real outstanding receivables, per currency (only where owing > 0)
+  const owedByCurrency = stats
+    .filter((s) => s.owing > 0)
+    .map((s) => ({ currency: s.currency, owing: s.owing }))
+
+  // Invoiced in the last 30 days = recent billing momentum, per currency
+  const cutoff30 = new Date(Date.now() - 30 * 864e5).toISOString()
+  const invoiced30Map: Record<string, number> = {}
+  for (const inv of billed) {
+    if (inv.created_at >= cutoff30) {
+      invoiced30Map[inv.currency] = (invoiced30Map[inv.currency] ?? 0) + Number(inv.total)
+    }
+  }
+  const invoiced30ByCurrency = Object.entries(invoiced30Map).map(([currency, total]) => ({ currency, total }))
+
+  // Active projects = anything not yet complete (what he's actually working on)
+  const activeProjects = (projects ?? []).filter((p) => p.status !== 'complete').length
 
   // Overdue = past the due date with a remaining balance. Computed from due_date
   // rather than stored status so it catches invoices that lapsed without re-saving.
@@ -60,7 +82,12 @@ export default async function DashboardPage() {
 
       <OverdueAlert count={overdueInvoices.length} owingByCurrency={overdueOwingByCurrency} />
 
-      <StatsCards stats={stats} invoiceCount={invoices?.length ?? 0} />
+      <StatsCards
+        owedByCurrency={owedByCurrency}
+        overdue={{ count: overdueInvoices.length, owingByCurrency: overdueOwingByCurrency }}
+        invoiced30ByCurrency={invoiced30ByCurrency}
+        activeProjects={activeProjects}
+      />
 
       <WorkloadCard load={load} max={maxWorkload} />
 
