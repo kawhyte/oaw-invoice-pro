@@ -127,7 +127,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {!project.is_personal && <VisibilityBadge variant="shared" />}
             </div>
             {!project.is_personal && (
-              <p className="text-xs text-[#8a8c94] mt-1">Shared on the client link below — use the switch on a file to keep it private. Accepts PDF files only.</p>
+              <p className="text-xs text-[#8a8c94] mt-1">e.g. signed contract, permit, site survey, or the invoice PDF. Shared on the client link below — PDF only; use the switch on a file to keep one private.</p>
             )}
           </div>
           <FileUpload projectId={id} userId={user.id} />

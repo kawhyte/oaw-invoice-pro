@@ -38,7 +38,7 @@ export function FileUpload({ projectId, userId }: Props) {
       <input ref={inputRef} type="file" accept="application/pdf" onChange={handleChange} className="hidden" id="file-upload" />
       <label htmlFor="file-upload"
         className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
-        {busy ? 'Uploading...' : '+ Upload PDF'}
+        {busy ? 'Uploading...' : '+ Upload Document'}
       </label>
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
