@@ -14,7 +14,8 @@ export function FileUpload({ projectId, userId }: Props) {
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.type !== 'application/pdf') { setError('Only PDF files are allowed.'); return }
+    // Accept by MIME or extension — some mobile pickers report a blank type for real PDFs.
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { setError('Only PDF files are allowed.'); return }
     setError(null)
     setUploading(true)
     try {

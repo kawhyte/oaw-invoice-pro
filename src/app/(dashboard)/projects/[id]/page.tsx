@@ -121,7 +121,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {!project.is_personal && <VisibilityBadge variant="shared" />}
             </div>
             {!project.is_personal && (
-              <p className="text-xs text-[#8a8c94] mt-1">Shared on the client link below — use the switch on a file to keep it private.</p>
+              <p className="text-xs text-[#8a8c94] mt-1">Shared on the client link below — use the switch on a file to keep it private. Accepts PDF files only.</p>
             )}
           </div>
           <FileUpload projectId={id} userId={user.id} />
@@ -139,7 +139,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <h2 className="label-caps">Drawings</h2>
               <VisibilityBadge variant="gated" />
             </div>
-            <p className="text-xs text-[#8a8c94] mt-1">Clients review a watermarked draft; the print-ready file unlocks when the linked invoice is paid (or you release it).</p>
+            <p className="text-xs text-[#8a8c94] mt-1">Clients review a watermarked draft; the print-ready file unlocks when the linked invoice is paid (or you release it). Accepts PDF files only.</p>
           </div>
           <DeliverableUpload projectId={id} userId={user.id} invoices={deliverableInvoiceOptions} watermarkText={watermarkText} />
         </div>

@@ -25,7 +25,8 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
   function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
-    if (f.type !== 'application/pdf') { setError('Only PDF files are allowed.'); return }
+    // Accept by MIME or extension — some mobile pickers report a blank type for real PDFs.
+    if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { setError('Only PDF files are allowed.'); return }
     setError(null)
     setFile(f)
     setName(f.name.replace(/\.pdf$/i, ''))
