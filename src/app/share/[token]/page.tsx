@@ -1,7 +1,19 @@
+import type { Viewport } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import { StatusChip } from '@/components/ui/StatusChip'
-import type { ProjectFile, ProjectNote } from '@/types'
+import { DrawingViewer } from '@/components/share/DrawingViewer'
+import { isFinalUnlocked } from '@/lib/deliverables'
+import type { ProjectFile, ProjectNote, ProjectDeliverable } from '@/types'
+
+// Re-enable pinch-zoom on the client share page only (the app shell disables it
+// app-wide for a native feel). Clients need to zoom into detailed drawings.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+}
 
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -25,6 +37,48 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     (files ?? []).map(async (file: ProjectFile) => {
       const { data } = await service.storage.from('project-files').createSignedUrl(file.storage_path, 86400)
       return { ...file, signedUrl: data?.signedUrl ?? '' }
+    })
+  )
+
+  // Drawings (payment-gated deliverables). Previews are always shown; the clean
+  // original is only signed/exposed when its linked invoice is paid or it has
+  // been released manually. Linked invoices are fetched by id so combined
+  // invoices (project_id null) gate correctly too.
+  const { data: deliverables } = await service
+    .from('project_deliverables')
+    .select('*')
+    .eq('project_id', project.id)
+    .order('created_at', { ascending: false })
+
+  const linkedInvoiceIds = [...new Set((deliverables ?? []).map((d: ProjectDeliverable) => d.linked_invoice_id).filter(Boolean))]
+  const { data: linkedInvoices } = linkedInvoiceIds.length
+    ? await service.from('invoices').select('id, status, total, amount_paid').in('id', linkedInvoiceIds as string[])
+    : { data: [] as any[] }
+  const linkedInvoiceById = new Map((linkedInvoices ?? []).map((i: any) => [i.id, i]))
+
+  const signUrl = async (path: string) => {
+    const { data } = await service.storage.from('project-files').createSignedUrl(path, 86400)
+    return data?.signedUrl ?? ''
+  }
+  const drawings = await Promise.all(
+    (deliverables ?? []).map(async (d: ProjectDeliverable) => {
+      const previews = await Promise.all((d.preview_paths ?? []).map(signUrl))
+      const zooms = await Promise.all((d.zoom_paths ?? []).map(signUrl))
+      // Pair each preview with its high-res zoom (fall back to the preview).
+      const pages = previews
+        .map((preview, i) => ({ preview, zoom: zooms[i] || preview }))
+        .filter(p => p.preview)
+      const inv = d.linked_invoice_id ? linkedInvoiceById.get(d.linked_invoice_id) : null
+      const unlocked = isFinalUnlocked(d, inv)
+      let downloadUrl = ''
+      if (unlocked) {
+        // Save the file under a meaningful name (project + drawing) instead of "original.pdf".
+        const safe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim()
+        const downloadName = `${safe(project.title)} - ${safe(d.name)}.pdf`
+        const { data } = await service.storage.from('project-files').createSignedUrl(d.storage_path, 86400, { download: downloadName })
+        downloadUrl = data?.signedUrl ?? ''
+      }
+      return { id: d.id, name: d.name, pages, unlocked, downloadUrl }
     })
   )
 
@@ -72,6 +126,39 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             )}
           </div>
         </div>
+
+        {/* Drawings (draft preview + payment-gated final) */}
+        {drawings.length > 0 && (
+          <div className="space-y-6">
+            {drawings.map(d => (
+              <div key={d.id} className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
+                  <h2 className="label-caps truncate">{d.name}</h2>
+                  <StatusChip status={d.unlocked ? 'unlocked' : 'locked'} />
+                </div>
+                <div className="p-4 sm:p-6 space-y-4">
+                  {d.pages.length === 0 ? (
+                    <p className="text-sm text-[#8a8c94]">Preview is being prepared.</p>
+                  ) : (
+                    <DrawingViewer name={d.name} pages={d.pages} />
+                  )}
+
+                  {d.unlocked ? (
+                    <a href={d.downloadUrl}
+                      className="block w-full text-center btn-primary px-4 py-2.5 text-sm rounded-lg">
+                      Download print-ready file
+                    </a>
+                  ) : (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+                      <p className="text-sm font-medium text-amber-800">Draft preview — for review only</p>
+                      <p className="text-xs text-amber-700 mt-0.5">The print-ready file unlocks once payment is complete.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Progress Notes */}
         {(notes ?? []).length > 0 && (

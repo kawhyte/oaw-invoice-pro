@@ -8,6 +8,8 @@ const STATUS_STYLES = {
   in_progress: { bg: '#d8e3fa', text: '#3c475a', label: 'In Progress' },
   review:      { bg: '#fdddb9', text: '#584329', label: 'Review' },
   complete:    { bg: '#dde8dd', text: '#2a5130', label: 'Complete' },
+  locked:      { bg: '#fdddb9', text: '#584329', label: 'Locked' },
+  unlocked:    { bg: '#dde8dd', text: '#2a5130', label: 'Unlocked' },
 }
 
 export function StatusChip({ status }: { status: string }) {

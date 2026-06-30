@@ -106,6 +106,20 @@ export interface ProjectFile {
 	uploaded_at: string;
 }
 
+export interface ProjectDeliverable {
+	id: string;
+	project_id: string;
+	name: string;
+	storage_path: string;
+	preview_paths: string[];
+	zoom_paths: string[];
+	page_count: number | null;
+	size_bytes: number | null;
+	linked_invoice_id: string | null;
+	manual_unlock: boolean;
+	created_at: string;
+}
+
 export interface InvoiceLineItem {
 	id: string;
 	invoice_id: string;

@@ -128,3 +128,83 @@ export async function deleteFileAction(fileId: string, storagePath: string, proj
   await supabase.from('project_files').delete().eq('id', fileId)
   revalidatePath(`/projects/${projectId}`)
 }
+
+// ---- Client deliverables (payment-gated draft/final drawings) ---------------
+
+export async function saveDeliverableAction(
+  projectId: string,
+  fields: {
+    name: string
+    storagePath: string
+    previewPaths: string[]
+    zoomPaths: string[]
+    pageCount: number | null
+    sizeBytes: number | null
+    linkedInvoiceId: string | null
+  }
+) {
+  const supabase = await assertProjectOwner(projectId)
+  await supabase.from('project_deliverables').insert({
+    project_id: projectId,
+    name: fields.name,
+    storage_path: fields.storagePath,
+    preview_paths: fields.previewPaths,
+    zoom_paths: fields.zoomPaths,
+    page_count: fields.pageCount,
+    size_bytes: fields.sizeBytes,
+    linked_invoice_id: fields.linkedInvoiceId,
+  })
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function toggleDeliverableUnlockAction(
+  deliverableId: string,
+  projectId: string,
+  current: boolean
+) {
+  const supabase = await assertProjectOwner(projectId)
+  await supabase
+    .from('project_deliverables')
+    .update({ manual_unlock: !current })
+    .eq('id', deliverableId)
+    .eq('project_id', projectId)
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function updateDeliverableInvoiceLinkAction(
+  deliverableId: string,
+  projectId: string,
+  invoiceId: string | null
+) {
+  const supabase = await assertProjectOwner(projectId)
+  await supabase
+    .from('project_deliverables')
+    .update({ linked_invoice_id: invoiceId })
+    .eq('id', deliverableId)
+    .eq('project_id', projectId)
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function deleteDeliverableAction(deliverableId: string, projectId: string) {
+  const supabase = await assertProjectOwner(projectId)
+  // Pull the storage paths (original + previews + zoom) before deleting the row.
+  const { data: deliverable } = await supabase
+    .from('project_deliverables')
+    .select('storage_path, preview_paths, zoom_paths')
+    .eq('id', deliverableId)
+    .eq('project_id', projectId)
+    .single()
+  if (!deliverable) throw new Error('Not found')
+
+  const asPaths = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : [])
+  const paths = [
+    deliverable.storage_path,
+    ...asPaths(deliverable.preview_paths),
+    ...asPaths(deliverable.zoom_paths),
+  ].filter(Boolean)
+
+  const service = createServiceClient()
+  if (paths.length) await service.storage.from('project-files').remove(paths)
+  await supabase.from('project_deliverables').delete().eq('id', deliverableId).eq('project_id', projectId)
+  revalidatePath(`/projects/${projectId}`)
+}

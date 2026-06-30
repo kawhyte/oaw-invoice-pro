@@ -6,12 +6,15 @@ import { ProjectNotes } from '@/components/projects/ProjectNotes'
 import { ShareLinkPanel } from '@/components/projects/ShareLinkPanel'
 import { FileUpload } from '@/components/projects/FileUpload'
 import { FileList } from '@/components/projects/FileList'
+import { DeliverableUpload } from '@/components/projects/DeliverableUpload'
+import { DeliverableList, type DeliverableRow } from '@/components/projects/DeliverableList'
 import { TaskChecklist } from '@/components/projects/TaskChecklist'
 import { BudgetTracker } from '@/components/projects/BudgetTracker'
 import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
-import { Eye } from 'lucide-react'
-import type { ProjectFile } from '@/types'
+import { isFinalUnlocked } from '@/lib/deliverables'
+import { Eye, Lock } from 'lucide-react'
+import type { ProjectFile, ProjectDeliverable } from '@/types'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,13 +22,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }, { data: invoices }, { data: tasks }] = await Promise.all([
+  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }, { data: invoices }, { data: tasks }, { data: deliverables }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, clients(*)').eq('id', id).eq('user_id', user.id).single(),
     supabase.from('project_notes').select('*').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('project_files').select('*').eq('project_id', id).order('uploaded_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
     supabase.from('invoices').select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id').eq('project_id', id).order('created_at', { ascending: false }),
     supabase.from('project_tasks').select('*').eq('project_id', id).order('sort_order', { ascending: true }),
+    supabase.from('project_deliverables').select('*').eq('project_id', id).order('created_at', { ascending: false }),
+    supabase.from('business_settings').select('business_name').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (!project) notFound()
@@ -54,6 +59,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       return { ...file, signedUrl: data?.signedUrl ?? '' }
     })
   )
+
+  // Resolve each deliverable's lock state against its linked invoice.
+  const invoiceById = new Map(allInvoices.map((inv: any) => [inv.id, inv]))
+  const deliverableRows: DeliverableRow[] = (deliverables ?? []).map((d: ProjectDeliverable) => {
+    const inv = d.linked_invoice_id ? invoiceById.get(d.linked_invoice_id) : null
+    const unlocked = isFinalUnlocked(d, inv)
+    let gateLabel: string
+    if (unlocked) {
+      gateLabel = d.manual_unlock ? 'Released to client manually' : `Unlocked — ${inv?.invoice_number} paid`
+    } else if (inv) {
+      gateLabel = `Locked — unlocks when ${inv.invoice_number} is paid`
+    } else {
+      gateLabel = 'Locked — release manually to share'
+    }
+    return { id: d.id, name: d.name, page_count: d.page_count, manual_unlock: d.manual_unlock, unlocked, gateLabel }
+  })
+  const deliverableInvoiceOptions = allInvoices.map((inv: any) => ({ id: inv.id, invoice_number: inv.invoice_number, status: inv.status }))
+  const watermarkText = `DRAFT · ${settings?.business_name || 'OW Studio'} · NOT FOR PRINT`
 
   return (
     <div className="space-y-6">
@@ -107,6 +130,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <FileList projectId={id} files={filesWithUrls} />
         </div>
       </div>
+
+      {!project.is_personal && (
+      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
+        <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="label-caps">Client Deliverables</h2>
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-amber-700 bg-amber-50 border border-amber-200">
+              <Lock className="w-3 h-3" />
+              Draft preview now · final unlocks on payment
+            </span>
+          </div>
+          <DeliverableUpload projectId={id} userId={user.id} invoices={deliverableInvoiceOptions} watermarkText={watermarkText} />
+        </div>
+        <div className="p-6">
+          <DeliverableList projectId={id} deliverables={deliverableRows} />
+        </div>
+      </div>
+      )}
 
       {!project.is_personal && (
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
