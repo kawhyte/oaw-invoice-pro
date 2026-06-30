@@ -64,16 +64,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const invoiceById = new Map(allInvoices.map((inv: any) => [inv.id, inv]))
   const deliverableRows: DeliverableRow[] = (deliverables ?? []).map((d: ProjectDeliverable) => {
     const inv = d.linked_invoice_id ? invoiceById.get(d.linked_invoice_id) : null
+    const invoicePaid = inv ? (inv.status === 'paid' || Number(inv.amount_paid ?? 0) >= Number(inv.total)) : false
     const unlocked = isFinalUnlocked(d, inv)
     let gateLabel: string
-    if (unlocked) {
-      gateLabel = d.manual_unlock ? 'Released to client manually' : `Unlocked — ${inv?.invoice_number} paid`
+    let warn = false
+    if (d.manual_unlock && !invoicePaid) {
+      // Force-shared before full payment — flag it so he remembers he's still owed.
+      gateLabel = inv ? `Force-shared — ${inv.invoice_number} not paid in full` : 'Force-shared — no invoice linked'
+      warn = !!inv
+    } else if (unlocked) {
+      gateLabel = inv ? `Unlocked — ${inv.invoice_number} paid` : 'Released to client manually'
     } else if (inv) {
       gateLabel = `Locked — unlocks when ${inv.invoice_number} is paid`
     } else {
       gateLabel = 'Locked — release manually to share'
     }
-    return { id: d.id, name: d.name, page_count: d.page_count, manual_unlock: d.manual_unlock, unlocked, gateLabel }
+    return { id: d.id, name: d.name, page_count: d.page_count, manual_unlock: d.manual_unlock, unlocked, gateLabel, warn }
   })
   const deliverableInvoiceOptions = allInvoices.map((inv: any) => ({ id: inv.id, invoice_number: inv.invoice_number, status: inv.status }))
   const watermarkText = `DRAFT · ${settings?.business_name || 'OW Studio'} · NOT FOR PRINT`

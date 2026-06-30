@@ -15,6 +15,7 @@ export interface DeliverableRow {
   manual_unlock: boolean
   unlocked: boolean
   gateLabel: string
+  warn?: boolean
 }
 
 interface Props { projectId: string; deliverables: DeliverableRow[] }
@@ -52,8 +53,9 @@ export function DeliverableList({ projectId, deliverables }: Props) {
                 <span className="text-sm font-medium text-[#1a1c1e] truncate">{d.name}</span>
                 <StatusChip status={d.unlocked ? 'unlocked' : 'locked'} />
               </div>
-              <p className="text-xs text-[#8a8c94] mt-0.5">
-                {d.page_count ? `${d.page_count} page${d.page_count !== 1 ? 's' : ''} · ` : ''}{d.gateLabel}
+              <p className="text-xs mt-0.5">
+                <span className="text-[#8a8c94]">{d.page_count ? `${d.page_count} page${d.page_count !== 1 ? 's' : ''} · ` : ''}</span>
+                <span className={d.warn ? 'text-amber-700 font-medium' : 'text-[#8a8c94]'}>{d.warn ? '⚠ ' : ''}{d.gateLabel}</span>
               </p>
             </div>
           </div>
