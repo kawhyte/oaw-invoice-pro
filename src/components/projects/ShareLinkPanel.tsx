@@ -4,9 +4,9 @@ import { CheckCircle2, Circle } from 'lucide-react'
 import { rotateShareTokenAction, toggleFinancialsAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 
-interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; noteCount: number; invoiceCount: number }
+interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; deliverableCount: number; noteCount: number; invoiceCount: number }
 
-export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, noteCount, invoiceCount }: Props) {
+export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, deliverableCount, noteCount, invoiceCount }: Props) {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
@@ -39,11 +39,22 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
           <div className="flex items-center justify-between px-3 py-2">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-              <span className="text-sm text-gray-700">Project documents</span>
+              <span className="text-sm text-gray-700">Documents</span>
             </div>
             {fileCount > 0
-              ? <span className="text-sm text-gray-600">{fileCount} file{fileCount !== 1 ? 's' : ''}</span>
-              : <span className="text-sm text-amber-600 font-medium">⚠ No files uploaded</span>}
+              ? <span className="text-sm text-gray-600">{fileCount} visible file{fileCount !== 1 ? 's' : ''}</span>
+              : <span className="text-sm text-gray-400">None shared</span>}
+          </div>
+          <div className="flex items-start justify-between px-3 py-2">
+            <div className="flex items-center gap-2">
+              {deliverableCount > 0
+                ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                : <Circle className="w-4 h-4 text-gray-300 shrink-0" />}
+              <span className="text-sm text-gray-700">Drawings</span>
+            </div>
+            {deliverableCount > 0
+              ? <span className="text-sm text-gray-600 text-right">{deliverableCount} drawing{deliverableCount !== 1 ? 's' : ''}<br /><span className="text-xs text-gray-400">Watermarked draft; final unlocks on payment</span></span>
+              : <span className="text-sm text-gray-400">None added</span>}
           </div>
           <div className="flex items-center justify-between px-3 py-2">
             <div className="flex items-center gap-2">

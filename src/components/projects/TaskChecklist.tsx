@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { addTaskAction, toggleTaskAction, deleteTaskAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
 import type { ProjectTask } from '@/types'
 
 interface Props { projectId: string; tasks: ProjectTask[] }
@@ -59,9 +60,12 @@ export function TaskChecklist({ projectId, tasks }: Props) {
   return (
     <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
       <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-        <h2 className="label-caps">Checklist</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="label-caps">Checklist</h2>
+          <VisibilityBadge variant="private" />
+        </div>
         {tasks.length > 0 && (
-          <span className="text-xs text-[#8a8c94]">{doneCount} of {tasks.length} done</span>
+          <span className="text-xs text-[#8a8c94] shrink-0">{doneCount} of {tasks.length} done</span>
         )}
       </div>
       <div className="p-6 space-y-4">

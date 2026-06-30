@@ -12,11 +12,25 @@
 // printing (a real plot is 7000px+), so the payment gate still holds. All work
 // happens once, on the uploader's device, so nothing large hits a server.
 // ============================================================================
-import { pdfjs } from 'react-pdf'
+// pdf.js (via react-pdf) touches browser-only globals like DOMMatrix at module
+// evaluation, which crashes if this module is evaluated on the server. So we
+// import it LAZILY, inside the render function, where it only ever runs in the
+// browser on user action — keeping this module safe to import from a component
+// that gets server-rendered.
+type PdfjsModule = typeof import('react-pdf')['pdfjs']
 
-// Match the worker source already used by InvoicePDFPreview.tsx.
-if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+let pdfjsPromise: Promise<PdfjsModule> | null = null
+async function getPdfjs(): Promise<PdfjsModule> {
+  if (!pdfjsPromise) {
+    pdfjsPromise = import('react-pdf').then(({ pdfjs }) => {
+      // Match the worker source already used by InvoicePDFPreview.tsx.
+      if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+      }
+      return pdfjs
+    })
+  }
+  return pdfjsPromise
 }
 
 export interface PreviewOptions {
@@ -82,6 +96,7 @@ export async function renderWatermarkedPreviews(
     onProgress,
   } = opts
 
+  const pdfjs = await getPdfjs()
   const data = new Uint8Array(await file.arrayBuffer())
   const pdf = await pdfjs.getDocument({ data }).promise
   const previews: Blob[] = []

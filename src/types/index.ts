@@ -103,6 +103,7 @@ export interface ProjectFile {
 	name: string;
 	storage_path: string;
 	size_bytes: number | null;
+	is_client_visible: boolean;
 	uploaded_at: string;
 }
 

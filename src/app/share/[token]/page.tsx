@@ -29,7 +29,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   const [{ data: notes }, { data: files }, { data: invoices }] = await Promise.all([
     service.from('project_notes').select('*').eq('project_id', project.id).order('created_at', { ascending: true }),
-    service.from('project_files').select('*').eq('project_id', project.id).order('uploaded_at', { ascending: false }),
+    service.from('project_files').select('*').eq('project_id', project.id).eq('is_client_visible', true).order('uploaded_at', { ascending: false }),
     service.from('invoices').select('*, invoice_payments(*)').eq('project_id', project.id).order('created_at', { ascending: false }),
   ])
 
@@ -129,7 +129,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
         {/* Drawings (draft preview + payment-gated final) */}
         {drawings.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-3">
+            <h2 className="label-caps px-1">Drawings</h2>
             {drawings.map(d => (
               <div key={d.id} className="bg-white rounded-xl border border-[#e0e0e3] shadow-card overflow-hidden">
                 <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">

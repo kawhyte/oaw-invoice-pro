@@ -109,6 +109,24 @@ export async function saveFileMetaAction(projectId: string, name: string, storag
   revalidatePath(`/projects/${projectId}`)
 }
 
+export async function toggleFileVisibilityAction(fileId: string, projectId: string, current: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  // Verify the file belongs to a project owned by this user.
+  const { data: file } = await supabase
+    .from('project_files')
+    .select('id, projects!inner(user_id)')
+    .eq('id', fileId)
+    .eq('project_id', projectId)
+    .single()
+  if (!file || (file.projects as unknown as { user_id: string })?.user_id !== user.id) {
+    throw new Error('Not found')
+  }
+  await supabase.from('project_files').update({ is_client_visible: !current }).eq('id', fileId)
+  revalidatePath(`/projects/${projectId}`)
+}
+
 export async function deleteFileAction(fileId: string, storagePath: string, projectId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

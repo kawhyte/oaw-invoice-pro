@@ -12,8 +12,8 @@ import { TaskChecklist } from '@/components/projects/TaskChecklist'
 import { BudgetTracker } from '@/components/projects/BudgetTracker'
 import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
 import { isFinalUnlocked } from '@/lib/deliverables'
-import { Eye, Lock } from 'lucide-react'
 import type { ProjectFile, ProjectDeliverable } from '@/types'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -114,32 +114,32 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       {project.is_personal && <BudgetTracker budget={project.budget} tasks={tasks ?? []} />}
 
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
-        <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="label-caps">Files</h2>
+        <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="label-caps">Documents</h2>
+              {!project.is_personal && <VisibilityBadge variant="shared" />}
+            </div>
             {!project.is_personal && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-emerald-700 bg-emerald-50 border border-emerald-200">
-                <Eye className="w-3 h-3" />
-                Always visible to client
-              </span>
+              <p className="text-xs text-[#8a8c94] mt-1">Shared on the client link below — use the switch on a file to keep it private.</p>
             )}
           </div>
           <FileUpload projectId={id} userId={user.id} />
         </div>
         <div className="p-6">
-          <FileList projectId={id} files={filesWithUrls} />
+          <FileList projectId={id} files={filesWithUrls} showVisibility={!project.is_personal} />
         </div>
       </div>
 
       {!project.is_personal && (
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
-        <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="label-caps">Client Deliverables</h2>
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-amber-700 bg-amber-50 border border-amber-200">
-              <Lock className="w-3 h-3" />
-              Draft preview now · final unlocks on payment
-            </span>
+        <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="label-caps">Drawings</h2>
+              <VisibilityBadge variant="gated" />
+            </div>
+            <p className="text-xs text-[#8a8c94] mt-1">Clients review a watermarked draft; the print-ready file unlocks when the linked invoice is paid (or you release it).</p>
           </div>
           <DeliverableUpload projectId={id} userId={user.id} invoices={deliverableInvoiceOptions} watermarkText={watermarkText} />
         </div>
@@ -151,11 +151,17 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       {!project.is_personal && (
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e0e0e3]">
-          <h2 className="label-caps">Invoices</h2>
+        <div className="flex flex-col gap-3 px-6 py-4 border-b border-[#e0e0e3] sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="label-caps">Invoices</h2>
+              <VisibilityBadge variant="private" />
+            </div>
+            <p className="text-xs text-[#8a8c94] mt-1">Just for you. Share a payment summary with the toggle in Client Share Link; saved invoice PDFs appear under Documents.</p>
+          </div>
           <Link
             href={`/invoices/new?projectId=${id}`}
-            className="text-sm font-medium text-[#715a3e] hover:text-[#8b7355] transition-colors"
+            className="text-sm font-medium text-[#715a3e] hover:text-[#8b7355] transition-colors shrink-0"
           >
             + New Invoice
           </Link>
@@ -216,7 +222,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       <ProjectNotes projectId={id} notes={notes ?? []} showClientBadge={!project.is_personal} />
       {!project.is_personal && (
-        <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.length} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} />
+        <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.filter(f => f.is_client_visible).length} deliverableCount={deliverables?.length ?? 0} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} />
       )}
     </div>
   )
