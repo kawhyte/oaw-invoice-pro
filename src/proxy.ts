@@ -41,5 +41,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // Exclude Next internals and static assets (images, fonts, and JS/CSS such as
+  // the pdf.js worker /pdf.worker.min.mjs) so auth never redirects them — a
+  // redirected worker fetch breaks pdf.js.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mjs|js|css|woff2?|ttf|ico|json|webmanifest|txt)$).*)'],
 }
