@@ -5,6 +5,16 @@
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024 // 100 MB
 export const MAX_UPLOAD_LABEL = '100 MB'
 
+// Supabase Free plan caps total file storage at 1 GB (shared across all
+// buckets). Drives the Dashboard storage meter.
+export const FREE_STORAGE_BYTES = 1024 ** 3 // 1 GB
+
+// GB-scale formatter for the storage meter (the MB-scale formatBytes in
+// FileList.tsx is for individual files).
+export function formatGB(bytes: number): string {
+  return `${(bytes / 1024 ** 3).toFixed(2)} GB`
+}
+
 // Cheap magic-byte sniff: a real PDF starts with the bytes "%PDF-". Catches
 // files that pass the name/extension check but aren't actually PDFs (e.g. a JPG
 // renamed to .pdf) before they ever reach pdf.js. Browser-only (uses File).

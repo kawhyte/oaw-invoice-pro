@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { StatsCards } from '@/components/dashboard/StatsCards'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
@@ -7,14 +8,16 @@ import { RecentInvoices } from '@/components/dashboard/RecentInvoices'
 import { RecentProjects } from '@/components/dashboard/RecentProjects'
 import { OverdueAlert } from '@/components/dashboard/OverdueAlert'
 import { WorkloadCard } from '@/components/dashboard/WorkloadCard'
+import { StorageCard } from '@/components/dashboard/StorageCard'
 import { currentLoad, DEFAULT_MAX_WORKLOAD } from '@/lib/capacity'
+import { FREE_STORAGE_BYTES } from '@/lib/uploadLimits'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: invoices }, { data: projects }, { data: recentInvoices }, { data: settings }] = await Promise.all([
+  const [{ data: invoices }, { data: projects }, { data: recentInvoices }, { data: settings }, { data: storageUsage }] = await Promise.all([
     supabase.from('invoices').select('*'),
     supabase.from('projects').select('*, clients(name)').order('updated_at', { ascending: false }),
     supabase
@@ -23,11 +26,15 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(5),
     supabase.from('business_settings').select('max_workload').eq('user_id', user.id).single(),
+    // Real bytes stored across all buckets (service-role RPC, server-only).
+    // Coalesce to 0 so the dashboard renders even before 0010 is applied.
+    createServiceClient().rpc('storage_usage'),
   ])
 
   // Current workload = summed difficulty of active projects vs his ceiling.
   const load = currentLoad(projects ?? [])
   const maxWorkload = settings?.max_workload ?? DEFAULT_MAX_WORKLOAD
+  const storageUsed = Number(storageUsage ?? 0) || 0
 
   // Drafts aren't real receivables — the client hasn't been billed — so they're
   // excluded from every money figure on the dashboard (cards and the chart).
@@ -89,7 +96,10 @@ export default async function DashboardPage() {
         activeProjects={activeProjects}
       />
 
-      <WorkloadCard load={load} max={maxWorkload} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <WorkloadCard load={load} max={maxWorkload} compact />
+        <StorageCard usedBytes={storageUsed} limitBytes={FREE_STORAGE_BYTES} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
