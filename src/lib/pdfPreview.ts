@@ -23,9 +23,11 @@ let pdfjsPromise: Promise<PdfjsModule> | null = null
 async function getPdfjs(): Promise<PdfjsModule> {
   if (!pdfjsPromise) {
     pdfjsPromise = import('react-pdf').then(({ pdfjs }) => {
-      // Match the worker source already used by InvoicePDFPreview.tsx.
+      // Served same-origin from /public (copied by scripts/copy-pdf-worker.mjs).
+      // A cross-origin module worker can't be instantiated, so a CDN URL here
+      // makes pdf.js fall back to a broken "fake worker".
       if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
       }
       return pdfjs
     })

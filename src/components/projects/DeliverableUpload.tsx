@@ -97,7 +97,13 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
         reset()
       })
     } catch (err: any) {
-      setError(err?.message ?? 'Upload failed.')
+      // Preview rasterization (pdf.js) can surface cryptic internal errors;
+      // show something a non-technical user can act on.
+      const raw = String(err?.message ?? '')
+      const isRenderIssue = /worker|pdf|invalid|module specifier/i.test(raw)
+      setError(isRenderIssue
+        ? "Couldn't process this PDF. Please try again or use a different file."
+        : (raw || 'Upload failed.'))
     } finally {
       setBusy(false)
     }

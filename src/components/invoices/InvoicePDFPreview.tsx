@@ -2,7 +2,9 @@
 import { useState } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+// Served same-origin from /public (copied by scripts/copy-pdf-worker.mjs) — a
+// cross-origin module worker can't be instantiated by the browser.
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
 
 export function InvoicePDFPreview({ invoiceId }: { invoiceId: string }) {
   const [numPages, setNumPages] = useState(0)
