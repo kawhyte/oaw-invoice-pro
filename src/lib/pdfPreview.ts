@@ -24,11 +24,11 @@ async function getPdfjs(): Promise<PdfjsModule> {
   if (!pdfjsPromise) {
     pdfjsPromise = import('react-pdf').then(({ pdfjs }) => {
       // Served same-origin from /public (copied by scripts/copy-pdf-worker.mjs).
-      // A cross-origin module worker can't be instantiated, so a CDN URL here
-      // makes pdf.js fall back to a broken "fake worker".
-      if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-      }
+      // Set UNCONDITIONALLY: react-pdf's index.js sets a default
+      // workerSrc = 'pdf.worker.mjs' (a bare specifier that can't be resolved),
+      // so a `if (!workerSrc)` guard would leave that broken default in place
+      // and pdf.js would fall back to a failing "fake worker".
+      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
       return pdfjs
     })
   }
