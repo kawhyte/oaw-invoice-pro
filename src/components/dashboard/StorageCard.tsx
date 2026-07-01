@@ -27,7 +27,7 @@ export function StorageCard({ usedBytes, limitBytes }: Props) {
           style={{ width: `${Math.max(pct, 4)}%` }}
         />
       </div>
-      <p className="mt-2 text-xs text-[#8a8c94]">For the documents, drawings &amp; logos you upload</p>
+      <p className="mt-2 text-xs text-[#8a8c94]"> Available storage for your uploaded documents &amp; drawings</p>
       {zone === 'over' && (
         <p className="mt-1 text-xs text-red-600">Full — delete files to upload more.</p>
       )}
