@@ -97,13 +97,11 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
         reset()
       })
     } catch (err: any) {
-      // Preview rasterization (pdf.js) can surface cryptic internal errors;
-      // show something a non-technical user can act on.
-      const raw = String(err?.message ?? '')
-      const isRenderIssue = /worker|pdf|invalid|module specifier/i.test(raw)
-      setError(isRenderIssue
-        ? "Couldn't process this PDF. Please try again or use a different file."
-        : (raw || 'Upload failed.'))
+      // TEMP DIAGNOSTIC: surface the raw pdf.js error so we can see the real
+      // cause in production. Revert to a friendly message once diagnosed.
+      const raw = String(err?.message ?? err ?? 'Upload failed.')
+      console.error('[deliverable-upload]', err)
+      setError(raw)
     } finally {
       setBusy(false)
     }
