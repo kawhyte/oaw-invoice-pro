@@ -19,7 +19,7 @@ export function StorageCard({ usedBytes, limitBytes }: Props) {
     <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-[#1a1c1e]">File Storage</h2>
-        <span className="text-xs text-[#8a8c94] data-mono">{formatGB(usedBytes)} / {formatGB(limitBytes)}</span>
+        <span className="text-xs text-[#8a8c94] data-mono">{formatGB(usedBytes)} of {formatGB(limitBytes)} used</span>
       </div>
       <div className="mt-3 h-2 w-full rounded-full bg-[#f0f0f2] overflow-hidden">
         <div
