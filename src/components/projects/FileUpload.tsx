@@ -2,6 +2,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { saveFileMetaAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, looksLikePdf } from '@/lib/uploadLimits'
 
 interface Props { projectId: string; userId: string }
 
@@ -16,6 +17,8 @@ export function FileUpload({ projectId, userId }: Props) {
     if (!file) return
     // Accept by MIME or extension — some mobile pickers report a blank type for real PDFs.
     if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { setError('Only PDF files are allowed.'); return }
+    if (file.size > MAX_UPLOAD_BYTES) { setError(`File too large (max ${MAX_UPLOAD_LABEL}).`); return }
+    if (!(await looksLikePdf(file))) { setError('That file isn’t a valid PDF.'); return }
     setError(null)
     setUploading(true)
     try {

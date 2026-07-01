@@ -3,6 +3,7 @@ import { useRef, useState, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { renderWatermarkedPreviews } from '@/lib/pdfPreview'
 import { saveDeliverableAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, looksLikePdf } from '@/lib/uploadLimits'
 
 interface InvoiceOption { id: string; invoice_number: string; status: string }
 interface Props {
@@ -22,11 +23,13 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
     // Accept by MIME or extension — some mobile pickers report a blank type for real PDFs.
     if (f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) { setError('Only PDF files are allowed.'); return }
+    if (f.size > MAX_UPLOAD_BYTES) { setError(`File too large (max ${MAX_UPLOAD_LABEL}).`); return }
+    if (!(await looksLikePdf(f))) { setError('That file isn’t a valid PDF.'); return }
     setError(null)
     setFile(f)
     setName(f.name.replace(/\.pdf$/i, ''))

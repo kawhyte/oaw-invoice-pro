@@ -1,7 +1,23 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { MAX_UPLOAD_BYTES } from '@/lib/uploadLimits'
 import { revalidatePath } from 'next/cache'
+
+// Defense-in-depth for direct-to-storage uploads: the browser uploads the file
+// straight to Supabase Storage, so the file bytes never pass through here — only
+// the metadata does. Storage RLS already restricts writes to the user's own
+// <user_id>/ folder; these checks add type/size/namespace sanity on top so the
+// bucket's client-declared limits can't be leveraged to write junk DB rows.
+function assertOwnedUploadPath(userId: string, projectId: string, path: string, ext: RegExp) {
+  if (!path.startsWith(`${userId}/${projectId}/`)) throw new Error('Invalid storage path')
+  if (!ext.test(path)) throw new Error('Unexpected file type')
+}
+function assertUploadSize(sizeBytes: number | null) {
+  if (sizeBytes != null && (sizeBytes <= 0 || sizeBytes > MAX_UPLOAD_BYTES)) {
+    throw new Error('File exceeds the maximum allowed size')
+  }
+}
 
 export async function addNoteAction(projectId: string, content: string) {
   const supabase = await createClient()
@@ -105,6 +121,8 @@ export async function saveFileMetaAction(projectId: string, name: string, storag
   if (!user) throw new Error('Unauthorized')
   const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
   if (!project) throw new Error('Not found')
+  assertOwnedUploadPath(user.id, projectId, storagePath, /\.pdf$/i)
+  assertUploadSize(sizeBytes)
   await supabase.from('project_files').insert({ project_id: projectId, name, storage_path: storagePath, size_bytes: sizeBytes })
   revalidatePath(`/projects/${projectId}`)
 }
@@ -162,6 +180,13 @@ export async function saveDeliverableAction(
   }
 ) {
   const supabase = await assertProjectOwner(projectId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  assertOwnedUploadPath(user.id, projectId, fields.storagePath, /\.pdf$/i)
+  assertUploadSize(fields.sizeBytes)
+  for (const p of [...fields.previewPaths, ...fields.zoomPaths]) {
+    assertOwnedUploadPath(user.id, projectId, p, /\.jpg$/i)
+  }
   await supabase.from('project_deliverables').insert({
     project_id: projectId,
     name: fields.name,
