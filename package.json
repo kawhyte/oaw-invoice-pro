@@ -3,12 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-pdf-worker.mjs",
-    "dev": "next dev",
+    "predev": "node scripts/copy-pdf-worker.mjs && node scripts/check-env.mjs .env.staging.local",
+    "dev": "dotenv -o -e .env.staging.local -- next dev",
+    "predev:prod": "node scripts/copy-pdf-worker.mjs && node scripts/check-env.mjs .env.prod.local",
+    "dev:prod": "dotenv -o -e .env.prod.local -- next dev",
     "prebuild": "node scripts/copy-pdf-worker.mjs",
     "build": "next build",
+    "prebuild:prod": "node scripts/copy-pdf-worker.mjs && node scripts/check-env.mjs .env.prod.local",
+    "build:prod": "dotenv -o -e .env.prod.local -- next build",
     "start": "next start",
-    "lint": "eslint"
+    "start:prod": "dotenv -o -e .env.prod.local -- next start",
+    "lint": "eslint",
+    "env:check": "node scripts/check-env.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",
@@ -33,6 +39,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",

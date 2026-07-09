@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Libre_Caslon_Text, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
+import { EnvironmentBadge } from '@/components/EnvironmentBadge'
 
 const libreCalson = Libre_Caslon_Text({
   subsets: ['latin'],
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${libreCalson.variable} ${hankenGrotesk.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans antialiased">
         <ServiceWorkerRegistration />
+        <EnvironmentBadge />
         {children}
       </body>
     </html>
