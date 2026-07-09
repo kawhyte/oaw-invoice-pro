@@ -2,6 +2,7 @@
 import { useTransition } from 'react'
 import { deleteFileAction, toggleFileVisibilityAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import type { ProjectFile } from '@/types'
 
 interface FileWithUrl extends ProjectFile { signedUrl: string }
@@ -16,14 +17,27 @@ function formatBytes(bytes: number | null) {
 export function FileList({ projectId, files, showVisibility = true }: Props) {
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
 
   async function handleDelete(fileId: string, storagePath: string) {
     if (!(await confirm({ title: 'Delete this file?', description: 'This removes the file from the project and the client’s shared view.', confirmLabel: 'Delete', variant: 'danger' }))) return
-    startTransition(async () => { await deleteFileAction(fileId, storagePath, projectId) })
+    startTransition(async () => {
+      try {
+        await deleteFileAction(fileId, storagePath, projectId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   function handleToggle(fileId: string, current: boolean) {
-    startTransition(async () => { await toggleFileVisibilityAction(fileId, projectId, current) })
+    startTransition(async () => {
+      try {
+        await toggleFileVisibilityAction(fileId, projectId, current)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   if (files.length === 0) return <p className="text-sm text-gray-400">No files uploaded yet.</p>

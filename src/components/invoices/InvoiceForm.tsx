@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createInvoiceAction, updateInvoiceAction } from '@/app/(dashboard)/invoices/actions'
 import { lineSubtotal, computeTotals } from '@/lib/invoiceCalc'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import type { Client, Project, BusinessSettings, DiscountType, Invoice, InvoiceLineItem } from '@/types'
 
 interface ProjectWithClient extends Omit<Project, 'clients'> { clients: Client | null }
@@ -23,6 +24,7 @@ interface InvoiceFormProps {
 export function InvoiceForm({ projects, bizSettings, invoice, editMode }: InvoiceFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const toast = useToast()
 
   const [selectedProjectId, setSelectedProjectId] = useState(() =>
     editMode && invoice ? invoice.project_id ?? '' : ''
@@ -123,12 +125,21 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
 
     if (editMode && invoice) {
       startTransition(async () => {
-        await updateInvoiceAction(invoice.id, fd)
+        try {
+          await updateInvoiceAction(invoice.id, fd)
+          toast.success('Invoice updated.')
+        } catch (err) {
+          toast.error(toErrorMessage(err))
+        }
       })
     } else {
       startTransition(async () => {
-        const id = await createInvoiceAction(fd)
-        router.push(`/invoices/${id}`)
+        try {
+          const id = await createInvoiceAction(fd)
+          router.push(`/invoices/${id}`)
+        } catch (err) {
+          toast.error(toErrorMessage(err))
+        }
       })
     }
   }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { X, Check } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { deleteInvoiceAction, markSentAction, uploadInvoicePdfAction } from '@/app/(dashboard)/invoices/actions'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 
 const InvoicePDFPreview = dynamic(
   () => import('./InvoicePDFPreview').then(m => m.InvoicePDFPreview),
@@ -32,6 +33,7 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, 
   const canSave = saveTargets.length > 0
   const [isSaving, startSaving] = useTransition()
   const [saveState, setSaveState] = useState<'idle' | 'success' | 'error'>('idle')
+  const toast = useToast()
   const [selectedProjectId, setSelectedProjectId] = useState(
     savedFile?.projectId ?? saveTargets[0]?.id ?? ''
   )
@@ -73,8 +75,12 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, 
   function handleDelete() {
     setShowDeleteModal(false)
     startTransition(async () => {
-      await deleteInvoiceAction(invoiceId)
-      router.push('/invoices')
+      try {
+        await deleteInvoiceAction(invoiceId)
+        router.push('/invoices')
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 
@@ -82,7 +88,13 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, 
     <>
       <div className="flex items-center gap-2 flex-wrap">
         {status === 'draft' && (
-          <button onClick={() => startTransition(async () => { await markSentAction(invoiceId) })} disabled={isPending}
+          <button onClick={() => startTransition(async () => {
+            try {
+              await markSentAction(invoiceId)
+            } catch (err) {
+              toast.error(toErrorMessage(err))
+            }
+          })} disabled={isPending}
             className="px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] disabled:opacity-50">
             Mark as Sent
           </button>

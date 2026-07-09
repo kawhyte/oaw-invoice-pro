@@ -1,18 +1,27 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { updateAmountPaidAction } from '@/app/(dashboard)/invoices/actions'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 
 interface Props { invoiceId: string; currentAmountPaid: number; total: number; currency: string }
 
 export function AmountPaidForm({ invoiceId, currentAmountPaid, total, currency }: Props) {
   const [value, setValue] = useState(currentAmountPaid > 0 ? String(currentAmountPaid) : '')
   const [isPending, startTransition] = useTransition()
+  const toast = useToast()
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const amount = parseFloat(value) || 0
-    startTransition(async () => { await updateAmountPaidAction(invoiceId, amount) })
+    startTransition(async () => {
+      try {
+        await updateAmountPaidAction(invoiceId, amount)
+        toast.success('Payment updated.')
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   return (

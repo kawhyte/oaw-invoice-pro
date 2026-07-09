@@ -26,7 +26,13 @@ export function FileUpload({ projectId, userId }: Props) {
       const storagePath = `${userId}/${projectId}/${Date.now()}-${file.name}`
       const { error: uploadError } = await supabase.storage.from('project-files').upload(storagePath, file)
       if (uploadError) throw uploadError
-      startTransition(async () => { await saveFileMetaAction(projectId, file.name, storagePath, file.size) })
+      startTransition(async () => {
+        try {
+          await saveFileMetaAction(projectId, file.name, storagePath, file.size)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Upload failed.')
+        }
+      })
     } catch (err: any) {
       setError(err.message ?? 'Upload failed.')
     } finally {

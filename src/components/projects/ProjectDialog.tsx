@@ -5,6 +5,7 @@ import { createProjectAction, updateProjectAction, deleteProjectAction } from '@
 import type { Client, Project } from '@/types'
 import { JOB_TYPES } from '@/types'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 
 const STATUS_OPTIONS = [
   { value: 'discovery', label: 'Discovery' },
@@ -29,6 +30,7 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
   const [status, setStatus] = useState(project?.status ?? 'discovery')
   const [geocodeWarning, setGeocodeWarning] = useState(false)
   const confirm = useConfirm()
+  const toast = useToast()
 
   // A saved job type that's no longer in JOB_TYPES (the user retired it) is kept
   // as a selectable option so editing the project never silently wipes it.
@@ -39,15 +41,19 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
-      const result = project
-        ? await updateProjectAction(project.id, formData)
-        : await createProjectAction(formData)
-      router.refresh()
-      if (!result.geocoded) {
-        setGeocodeWarning(true)
-        return
+      try {
+        const result = project
+          ? await updateProjectAction(project.id, formData)
+          : await createProjectAction(formData)
+        router.refresh()
+        if (!result.geocoded) {
+          setGeocodeWarning(true)
+          return
+        }
+        onClose()
+      } catch (err) {
+        toast.error(toErrorMessage(err))
       }
-      onClose()
     })
   }
 
@@ -55,9 +61,13 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
     if (!project) return
     if (!(await confirm({ title: 'Delete this project?', description: 'This permanently deletes the project and cannot be undone.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => {
-      await deleteProjectAction(project.id)
-      onClose()
-      router.refresh()
+      try {
+        await deleteProjectAction(project.id)
+        onClose()
+        router.refresh()
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 

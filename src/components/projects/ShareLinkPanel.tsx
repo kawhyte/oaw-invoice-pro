@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { rotateShareTokenAction, toggleFinancialsAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 
 interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; deliverableCount: number; noteCount: number; invoiceCount: number }
 
@@ -10,6 +11,7 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const shareUrl = `${origin}/share/${shareToken}`
 
@@ -21,11 +23,23 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
 
   async function handleRotate() {
     if (!(await confirm({ title: 'Rotate share link?', description: 'The old link will stop working immediately.', confirmLabel: 'Rotate link' }))) return
-    startTransition(async () => { await rotateShareTokenAction(projectId) })
+    startTransition(async () => {
+      try {
+        await rotateShareTokenAction(projectId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   function handleToggle() {
-    startTransition(async () => { await toggleFinancialsAction(projectId, showFinancials) })
+    startTransition(async () => {
+      try {
+        await toggleFinancialsAction(projectId, showFinancials)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   return (

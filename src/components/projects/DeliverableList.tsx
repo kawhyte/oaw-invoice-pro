@@ -3,6 +3,7 @@ import { useTransition } from 'react'
 import { FileText } from 'lucide-react'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import {
   toggleDeliverableUnlockAction,
   deleteDeliverableAction,
@@ -23,9 +24,16 @@ interface Props { projectId: string; deliverables: DeliverableRow[] }
 export function DeliverableList({ projectId, deliverables }: Props) {
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
 
   function handleToggle(d: DeliverableRow) {
-    startTransition(async () => { await toggleDeliverableUnlockAction(d.id, projectId, d.manual_unlock) })
+    startTransition(async () => {
+      try {
+        await toggleDeliverableUnlockAction(d.id, projectId, d.manual_unlock)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   async function handleDelete(d: DeliverableRow) {
@@ -35,7 +43,13 @@ export function DeliverableList({ projectId, deliverables }: Props) {
       confirmLabel: 'Delete',
       variant: 'danger',
     }))) return
-    startTransition(async () => { await deleteDeliverableAction(d.id, projectId) })
+    startTransition(async () => {
+      try {
+        await deleteDeliverableAction(d.id, projectId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   if (deliverables.length === 0) {

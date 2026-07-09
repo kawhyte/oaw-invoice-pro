@@ -2,6 +2,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { createClientAction, updateClientAction, deleteClientAction } from '@/app/(dashboard)/clients/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import type { Client } from '@/types'
 
 interface Props {
@@ -13,14 +14,19 @@ export function ClientDialog({ client, onClose }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
-      if (client) await updateClientAction(client.id, formData)
-      else await createClientAction(formData)
-      onClose()
+      try {
+        if (client) await updateClientAction(client.id, formData)
+        else await createClientAction(formData)
+        onClose()
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 
@@ -28,8 +34,12 @@ export function ClientDialog({ client, onClose }: Props) {
     if (!client) return
     if (!(await confirm({ title: 'Delete this client?', description: 'This permanently deletes the client and cannot be undone.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => {
-      await deleteClientAction(client.id)
-      onClose()
+      try {
+        await deleteClientAction(client.id)
+        onClose()
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 

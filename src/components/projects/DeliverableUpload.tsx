@@ -88,16 +88,20 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
       setProgress('Saving…')
       const sizeBytes = file.size
       startTransition(async () => {
-        await saveDeliverableAction(projectId, {
-          name: name.trim() || file.name,
-          storagePath: originalPath,
-          previewPaths,
-          zoomPaths,
-          pageCount: previews.length,
-          sizeBytes,
-          linkedInvoiceId: invoiceId || null,
-        })
-        reset()
+        try {
+          await saveDeliverableAction(projectId, {
+            name: name.trim() || file.name,
+            storagePath: originalPath,
+            previewPaths,
+            zoomPaths,
+            pageCount: previews.length,
+            sizeBytes,
+            linkedInvoiceId: invoiceId || null,
+          })
+          reset()
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Upload failed.')
+        }
       })
     } catch (err: any) {
       // Preview rasterization (pdf.js) can surface cryptic internal errors;

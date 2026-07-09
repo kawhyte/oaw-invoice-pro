@@ -1,18 +1,24 @@
 'use client'
 import { useTransition } from 'react'
 import { markPaymentPaidAction, markPaymentUnpaidAction } from '@/app/(dashboard)/invoices/actions'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import type { InvoicePayment } from '@/types'
 
 interface Props { invoiceId: string; payments: InvoicePayment[]; currency: string }
 
 export function PaymentStagesTable({ invoiceId, payments, currency }: Props) {
   const [isPending, startTransition] = useTransition()
+  const toast = useToast()
   const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n)
 
   function toggle(p: InvoicePayment) {
     startTransition(async () => {
-      if (p.status === 'pending') await markPaymentPaidAction(p.id, invoiceId)
-      else await markPaymentUnpaidAction(p.id, invoiceId)
+      try {
+        if (p.status === 'pending') await markPaymentPaidAction(p.id, invoiceId)
+        else await markPaymentUnpaidAction(p.id, invoiceId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 

@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react'
 import { addNoteAction, deleteNoteAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
 import type { ProjectNote } from '@/types'
 
@@ -11,19 +12,30 @@ export function ProjectNotes({ projectId, notes, showClientBadge = true }: Props
   const [content, setContent] = useState('')
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!content.trim()) return
     startTransition(async () => {
-      await addNoteAction(projectId, content.trim())
-      setContent('')
+      try {
+        await addNoteAction(projectId, content.trim())
+        setContent('')
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 
   async function handleDelete(noteId: string) {
     if (!(await confirm({ title: 'Delete this note?', confirmLabel: 'Delete', variant: 'danger' }))) return
-    startTransition(async () => { await deleteNoteAction(noteId, projectId) })
+    startTransition(async () => {
+      try {
+        await deleteNoteAction(noteId, projectId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   return (

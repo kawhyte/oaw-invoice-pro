@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { addTaskAction, toggleTaskAction, deleteTaskAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
 import type { ProjectTask } from '@/types'
 
@@ -24,6 +25,7 @@ export function TaskChecklist({ projectId, tasks }: Props) {
   const [cost, setCost] = useState('')
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
 
   // Open tasks first (by sort order), completed sink to the bottom.
   const ordered = [...tasks].sort((a, b) => {
@@ -37,24 +39,40 @@ export function TaskChecklist({ projectId, tasks }: Props) {
     e.preventDefault()
     if (!title.trim()) return
     startTransition(async () => {
-      await addTaskAction(projectId, {
-        title: title.trim(),
-        cost: cost ? Number(cost) : null,
-        due_date: dueDate || null,
-      })
-      setTitle('')
-      setDueDate('')
-      setCost('')
+      try {
+        await addTaskAction(projectId, {
+          title: title.trim(),
+          cost: cost ? Number(cost) : null,
+          due_date: dueDate || null,
+        })
+        setTitle('')
+        setDueDate('')
+        setCost('')
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 
   function handleToggle(task: ProjectTask) {
-    startTransition(async () => { await toggleTaskAction(projectId, task.id, !task.completed) })
+    startTransition(async () => {
+      try {
+        await toggleTaskAction(projectId, task.id, !task.completed)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   async function handleDelete(taskId: string) {
     if (!(await confirm({ title: 'Delete this item?', confirmLabel: 'Delete', variant: 'danger' }))) return
-    startTransition(async () => { await deleteTaskAction(projectId, taskId) })
+    startTransition(async () => {
+      try {
+        await deleteTaskAction(projectId, taskId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   return (

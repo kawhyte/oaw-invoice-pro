@@ -1,15 +1,21 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { separateInvoiceAction } from '@/app/(dashboard)/invoices/actions'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 
 export function SeparateInvoiceButton({ invoiceId, projectCount }: { invoiceId: string; projectCount: number }) {
   const [isPending, startTransition] = useTransition()
   const [showModal, setShowModal] = useState(false)
+  const toast = useToast()
 
   function handleSeparate() {
     setShowModal(false)
     startTransition(async () => {
-      await separateInvoiceAction(invoiceId)
+      try {
+        await separateInvoiceAction(invoiceId)
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
     })
   }
 

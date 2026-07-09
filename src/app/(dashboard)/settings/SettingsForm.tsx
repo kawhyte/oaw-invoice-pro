@@ -3,11 +3,13 @@ import { useState, useRef, useTransition } from 'react'
 import { saveSettingsAction, saveLogoUrlAction, removeLogoAction } from './actions'
 import { createClient } from '@/lib/supabase/client'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import type { BusinessSettings } from '@/types'
 
 export function SettingsForm({ settings }: { settings: BusinessSettings | null }) {
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
+  const toast = useToast()
   const [logoUrl, setLogoUrl] = useState<string | null>(settings?.logo_url ?? null)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
@@ -16,7 +18,14 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    startTransition(async () => { await saveSettingsAction(fd) })
+    startTransition(async () => {
+      try {
+        await saveSettingsAction(fd)
+        toast.success('Settings saved.')
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
   }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
