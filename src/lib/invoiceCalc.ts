@@ -71,9 +71,12 @@ export interface StatusInput {
 
 export function computeStatus({ amountPaid, total, dueDate, wasSent }: StatusInput): InvoiceStatus {
   if (total > 0 && amountPaid >= total) return 'paid'
+  // Partial wins over overdue: "some money came in" is the more actionable
+  // signal on a row, and overdue money is independently computed from
+  // due_date on the dashboard (OverdueAlert / stats), so it is never lost.
+  if (amountPaid > 0) return 'partial'
   const today = todayInBusinessTz()
   if (dueDate && dueDate < today) return 'overdue'
-  if (amountPaid > 0) return 'partial'
   if (wasSent) return 'sent'
   return 'draft'
 }

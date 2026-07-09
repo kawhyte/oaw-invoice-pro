@@ -1,10 +1,13 @@
+'use client'
 import Link from 'next/link'
 import { StatusChip } from '@/components/ui/StatusChip'
+import { QuickPayButton } from '@/components/invoices/QuickPayButton'
 
 interface InvoiceRow {
   id: string
   invoice_number: string
   total: number
+  amount_paid: number
   currency: string
   status: string
   created_at: string
@@ -44,6 +47,7 @@ export function RecentInvoices({ invoices }: { invoices: InvoiceRow[] }) {
               <div className="flex items-center gap-3">
                 <p className="text-sm font-medium text-[#1a1c1e] data-mono">{fmt(inv.total, inv.currency)}</p>
                 <StatusChip status={inv.status} />
+                <QuickPayButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} total={inv.total} amountPaid={inv.amount_paid} currency={inv.currency} />
               </div>
             </Link>
           ))}

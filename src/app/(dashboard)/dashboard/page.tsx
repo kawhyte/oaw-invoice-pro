@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   const [{ data: invoices }, { data: projects }, { data: recentInvoices }, { data: settings }, { data: storageUsage }] = await Promise.all([
-    supabase.from('invoices').select('*'),
+    supabase.from('invoices').select('currency, total, amount_paid, status, created_at, due_date'),
     supabase.from('projects').select('*, clients(name)').order('updated_at', { ascending: false }),
     supabase
       .from('invoices')
