@@ -11,6 +11,7 @@ import { WorkloadCard } from '@/components/dashboard/WorkloadCard'
 import { StorageCard } from '@/components/dashboard/StorageCard'
 import { currentLoad, DEFAULT_MAX_WORKLOAD } from '@/lib/capacity'
 import { FREE_STORAGE_BYTES } from '@/lib/uploadLimits'
+import { todayInBusinessTz } from '@/lib/dates'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -70,7 +71,7 @@ export default async function DashboardPage() {
 
   // Overdue = past the due date with a remaining balance. Computed from due_date
   // rather than stored status so it catches invoices that lapsed without re-saving.
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayInBusinessTz()
   const overdueInvoices = (invoices ?? []).filter(
     (i) => i.due_date && i.due_date < today && Number(i.total) - Number(i.amount_paid) > 0
   )

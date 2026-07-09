@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { DiscountType } from '@/types'
 import { lineSubtotal, computeTotals, computeStatus, round2 } from '@/lib/invoiceCalc'
+import { todayInBusinessTz } from '@/lib/dates'
 import { renderInvoicePdf } from '@/lib/invoicePdf'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
@@ -546,7 +547,7 @@ export async function markPaymentPaidAction(paymentId: string, invoiceId: string
   await assertPaymentOwned(supabase, paymentId, invoiceId, user.id)
   await supabase
     .from('invoice_payments')
-    .update({ status: 'paid', paid_date: new Date().toISOString().split('T')[0] })
+    .update({ status: 'paid', paid_date: todayInBusinessTz() })
     .eq('id', paymentId)
   revalidatePath(`/invoices/${invoiceId}`)
 }

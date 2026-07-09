@@ -1,4 +1,5 @@
 import type { DiscountType, InvoiceStatus } from '@/types'
+import { todayInBusinessTz } from '@/lib/dates'
 
 /**
  * Single source of truth for invoice money math.
@@ -70,7 +71,7 @@ export interface StatusInput {
 
 export function computeStatus({ amountPaid, total, dueDate, wasSent }: StatusInput): InvoiceStatus {
   if (total > 0 && amountPaid >= total) return 'paid'
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayInBusinessTz()
   if (dueDate && dueDate < today) return 'overdue'
   if (amountPaid > 0) return 'partial'
   if (wasSent) return 'sent'
