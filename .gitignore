@@ -36,6 +36,9 @@ yarn-error.log*
 # local-only demo/seed SQL (not for commit)
 supabase/local/
 
+# local planning docs (not for commit)
+/PLAN-*.md
+
 # vercel
 .vercel
 
