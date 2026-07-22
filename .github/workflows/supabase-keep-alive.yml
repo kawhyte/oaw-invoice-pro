@@ -1,34 +1,99 @@
 name: Supabase keep-alive
 
-# Supabase free tier pauses a project after ~7 days without API activity.
-# This pings BOTH projects (production + oaw-staging) every 3 days so the
-# inactivity timer never gets close. The Vercel cron in vercel.json remains
-# as a second, independent keep-alive for production only.
+# Supabase free tier pauses a project after ~7 days without activity.
+# Runs DAILY (not every 3 days) because GitHub Actions cron is best-effort
+# and silently drops scheduled runs under load.
+#
+# NOTE: GitHub disables scheduled workflows after 60 days with no repo
+# activity. The `bump` job below commits a timestamp file weekly so the
+# schedule never gets auto-disabled.
+
 on:
   schedule:
-    # 06:17 UTC every 3rd day. Odd minute on purpose: GitHub delays/skips
-    # on-the-hour cron runs under load.
-    - cron: '17 6 */3 * *'
+    - cron: '17 6 * * *'   # 06:17 UTC daily (odd minute avoids on-the-hour congestion)
   workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false      # one dead project must not cancel the other
+      matrix:
+        include:
+          - name: production
+            url_secret: SUPABASE_PROD_URL
+            key_secret: SUPABASE_PROD_ANON_KEY
+          - name: staging
+            url_secret: SUPABASE_STAGING_URL
+            key_secret: SUPABASE_STAGING_ANON_KEY
     steps:
-      - name: Ping production Supabase
+      - name: Ping ${{ matrix.name }}
+        env:
+          SUPABASE_URL: ${{ secrets[matrix.url_secret] }}
+          SUPABASE_KEY: ${{ secrets[matrix.key_secret] }}
         run: |
-          curl --fail --silent --show-error \
-            -H "apikey: ${{ secrets.SUPABASE_PROD_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_PROD_ANON_KEY }}" \
-            "${{ secrets.SUPABASE_PROD_URL }}/rest/v1/projects?select=id&limit=1" \
-            -o /dev/null -w "production HTTP %{http_code}\n"
+          set -euo pipefail
 
-      - name: Ping staging Supabase (oaw-staging)
-        # always() so staging is still pinged even if the production step failed
-        if: always()
+          # Strip stray whitespace/newlines pasted into the secret; drop trailing slash.
+          URL="$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]' | sed 's:/*$::')"
+          KEY="$(printf '%s' "$SUPABASE_KEY" | tr -d '[:space:]')"
+
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::Missing secret ${{ matrix.url_secret }} or ${{ matrix.key_secret }}"
+            exit 1
+          fi
+
+          HOST="$(printf '%s' "$URL" | sed -E 's#^https?://##')"
+          echo "Target: https://$HOST"
+
+          # DNS check first. A PAUSED Supabase project stops resolving,
+          # which is what produced curl exit code 6 previously.
+          if ! getent hosts "$HOST" > /dev/null; then
+            echo "::error::$HOST does not resolve. The ${{ matrix.name }} project is almost certainly PAUSED — unpause it manually in the Supabase dashboard."
+            exit 1
+          fi
+
+          # A WRITE is a stronger activity signal than a read.
+          CODE=$(curl --silent --show-error --location \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            --max-time 30 \
+            -X PATCH \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{\"pinged_at\":\"$(date -u +%FT%TZ)\"}" \
+            "$URL/rest/v1/keep_alive?id=eq.1" \
+            -o /tmp/body.txt -w "%{http_code}")
+
+          echo "${{ matrix.name }} HTTP $CODE"
+          cat /tmp/body.txt || true
+
+          case "$CODE" in
+            2*) echo "OK" ;;
+            *)  echo "::error::${{ matrix.name }} keep-alive failed with HTTP $CODE"; exit 1 ;;
+          esac
+
+  # Keeps the repo "active" so GitHub never auto-disables the cron above.
+  bump:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit heartbeat weekly
         run: |
-          curl --fail --silent --show-error \
-            -H "apikey: ${{ secrets.SUPABASE_STAGING_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_STAGING_ANON_KEY }}" \
-            "${{ secrets.SUPABASE_STAGING_URL }}/rest/v1/projects?select=id&limit=1" \
-            -o /dev/null -w "staging HTTP %{http_code}\n"
+          set -euo pipefail
+          # Only commit on Mondays — avoids 365 junk commits a year.
+          [ "$(date -u +%u)" = "1" ] || { echo "Not Monday, skipping."; exit 0; }
+
+          mkdir -p .github
+          date -u +%FT%TZ > .github/last-keepalive.txt
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/last-keepalive.txt
+          git diff --staged --quiet || git commit -m "chore: keep-alive heartbeat [skip ci]"
+          git push
