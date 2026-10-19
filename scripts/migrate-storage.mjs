@@ -6,10 +6,13 @@
 // Usage:
 //   npx dotenv -e .env.staging.local -- node scripts/migrate-storage.mjs --dry-run
 //   npx dotenv -e .env.staging.local -- node scripts/migrate-storage.mjs
+//   ... --skip-logo   copy files only; leave logo_url alone (use BEFORE deploying the
+//                     new code, so the live app's logo keeps working until then)
 import { createClient } from '@supabase/supabase-js'
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 
 const dry = process.argv.includes('--dry-run')
+const skipLogo = process.argv.includes('--skip-logo')
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 const s3 = new S3Client({
   endpoint: process.env.STORAGE_ENDPOINT,
@@ -63,7 +66,7 @@ for (const [bucket, keyPrefix] of [['project-files', ''], ['logos', 'logos/']]) 
 const { data: rows, error: rowsErr } = await sb.from('business_settings').select('user_id, logo_url')
 if (rowsErr) throw rowsErr
 let logos = 0
-for (const r of rows ?? []) {
+for (const r of skipLogo ? [] : rows ?? []) {
   const m = r.logo_url && r.logo_url.match(/\/object\/public\/logos\/(.+?)(\?|$)/)
   if (!m) continue
   const key = 'logos/' + decodeURIComponent(m[1])
@@ -74,4 +77,4 @@ for (const r of rows ?? []) {
 }
 
 const mb = (n) => (n / 1024 / 1024).toFixed(1) + ' MB'
-console.log({ found, foundSize: mb(foundBytes), [dry ? 'wouldCopy' : 'copied']: copied, copiedSize: mb(bytes), skippedAlreadyThere: skipped, logoRowsRewritten: logos })
+console.log({ found, foundSize: mb(foundBytes), [dry ? 'wouldCopy' : 'copied']: copied, copiedSize: mb(bytes), skippedAlreadyThere: skipped, logoRowsRewritten: skipLogo ? 'skipped' : logos })
