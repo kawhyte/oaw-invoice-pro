@@ -1,26 +1,24 @@
 // scripts/check-env.mjs
 // Usage:
 //   node scripts/check-env.mjs <file>   -> validate one profile file (used by pre-scripts); exit 1 on failure
-//   node scripts/check-env.mjs          -> report which Supabase project each profile points to
+//   node scripts/check-env.mjs          -> report which Neon branch each profile points to
 import { readFileSync, existsSync } from 'node:fs'
 
 const REQUIRED = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'RESEND_API_KEY',
-  'RESEND_FROM_EMAIL',
-  'CRON_SECRET',
+  'DATABASE_URL',
+  'BETTER_AUTH_SECRET',
+  'BETTER_AUTH_URL',
   'STORAGE_ENDPOINT',
   'STORAGE_REGION',
   'STORAGE_BUCKET',
   'STORAGE_ACCESS_KEY_ID',
   'STORAGE_SECRET_ACCESS_KEY',
-] // RESEND_TO_OVERRIDE intentionally not required
+]
 
+// Neon endpoint ids (host prefix) of each branch, so a profile can never
+// silently point at the wrong database.
 const REFS = {
-  ybexqyritucfnkepthbu: 'STAGING',
-  wponxcekzuxwkuentklz: 'PRODUCTION',
+  'ep-silent-unit-b8zt7nlx': 'STAGING',
 }
 
 function parse(file) {
@@ -34,9 +32,11 @@ function parse(file) {
 
 function describe(file) {
   const vars = parse(file)
-  const url = vars.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  const ref = Object.keys(REFS).find((r) => url.includes(r))
-  const label = ref ? REFS[ref] : 'UNKNOWN PROJECT'
+  let host = ''
+  try { host = new URL(vars.DATABASE_URL ?? '').hostname } catch {}
+  const ref = Object.keys(REFS).find((r) => host.startsWith(r))
+  const label = ref ? REFS[ref] : (host ? 'PRODUCTION?' : 'NO DATABASE')
+  const url = host.split('.')[0]
   const missing = REQUIRED.filter((k) => !vars[k])
   return { label, ref: ref ?? url, missing }
 }

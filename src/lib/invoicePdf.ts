@@ -2,9 +2,9 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import React from 'react'
 import { InvoiceDocument } from '@/components/invoices/InvoiceDocument'
 import { resolveLogoUrl } from '@/lib/storage'
-import type { createClient } from '@/lib/supabase/server'
-
-type SupabaseServer = Awaited<ReturnType<typeof createClient>>
+import { and, eq } from 'drizzle-orm'
+import { db, invoices, business_settings, invoice_line_items } from '@/db'
+import type { BusinessSettings } from '@/types'
 
 /**
  * Fetches an invoice (with its projects, clients and line items) plus the
@@ -16,20 +16,27 @@ type SupabaseServer = Awaited<ReturnType<typeof createClient>>
  * for this user.
  */
 export async function renderInvoicePdf(
-  supabase: SupabaseServer,
   invoiceId: string,
   userId: string
 ): Promise<{ buffer: Buffer; invoice: { invoice_number: string; project_id: string | null } } | null> {
-  const [{ data: invoice }, { data: bizSettings }] = await Promise.all([
-    supabase.from('invoices')
-      .select('*, projects(title, job_type, location_address, clients(name, email)), clients(name, email), invoice_line_items(*)')
-      .eq('id', invoiceId).eq('user_id', userId).single(),
-    supabase.from('business_settings').select('*').eq('user_id', userId).single(),
+  const [invoice, bizSettings] = await Promise.all([
+    db.query.invoices.findFirst({
+      where: and(eq(invoices.id, invoiceId), eq(invoices.user_id, userId)),
+      with: {
+        projects: {
+          columns: { title: true, job_type: true, location_address: true },
+          with: { clients: { columns: { name: true, email: true } } },
+        },
+        clients: { columns: { name: true, email: true } },
+        invoice_line_items: { orderBy: invoice_line_items.sort_order },
+      },
+    }),
+    db.query.business_settings.findFirst({ where: eq(business_settings.user_id, userId) }),
   ])
 
   if (!invoice) return null
   // Logos live in a private bucket — sign a short-lived URL for the PDF renderer.
-  const biz = bizSettings ? { ...bizSettings, logo_url: await resolveLogoUrl(bizSettings.logo_url) } : null
+  const biz = bizSettings ? ({ ...bizSettings, logo_url: await resolveLogoUrl(bizSettings.logo_url) } as BusinessSettings) : null
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

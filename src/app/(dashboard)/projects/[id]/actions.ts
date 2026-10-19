@@ -1,8 +1,10 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { and, desc, eq } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
+import { db, projects, project_notes, project_tasks, project_files, project_deliverables, invoices } from '@/db'
+import { requireUser } from '@/lib/session'
 import { MAX_UPLOAD_BYTES } from '@/lib/uploadLimits'
 import { signedPutUrl, removeObjects } from '@/lib/storage'
-import { revalidatePath } from 'next/cache'
 
 // Uploads go browser → object storage through presigned PUT URLs that only
 // these actions issue (key chosen here, Content-Type + Content-Length signed).
@@ -18,13 +20,18 @@ function assertUploadSize(sizeBytes: number | null) {
   }
 }
 
+/** Signed-in owner of `projectId`, or throws. Every action below goes through this. */
+async function assertProjectOwner(projectId: string) {
+  const user = await requireUser()
+  const [project] = await db.select({ id: projects.id }).from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.user_id, user.id))).limit(1)
+  if (!project) throw new Error('Not found')
+  return user
+}
+
 /** Approves one PDF upload and returns where to PUT it. */
 export async function createFileUploadAction(projectId: string, fileName: string, sizeBytes: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
-  if (!project) throw new Error('Not found')
+  const user = await assertProjectOwner(projectId)
   assertUploadSize(sizeBytes)
   const safeName = fileName.replace(/[^\w.\- ]+/g, '_').replace(/\.pdf$/i, '') + '.pdf'
   const storagePath = `${user.id}/${projectId}/${Date.now()}-${safeName}`
@@ -38,9 +45,7 @@ export async function createDeliverableUploadAction(
   originalSize: number,
   pages: { previewSize: number; zoomSize: number }[],
 ) {
-  const supabase = await assertProjectOwner(projectId)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const user = await assertProjectOwner(projectId)
   assertUploadSize(originalSize)
   if (pages.length === 0 || pages.length > 200) throw new Error('Unexpected page count')
   const JPEG_MAX = 15 * 1024 * 1024
@@ -64,50 +69,28 @@ export async function createDeliverableUploadAction(
 }
 
 export async function addNoteAction(projectId: string, content: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
-  if (!project) throw new Error('Not found')
-  await supabase.from('project_notes').insert({ project_id: projectId, content })
+  await assertProjectOwner(projectId)
+  await db.insert(project_notes).values({ project_id: projectId, content })
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function deleteNoteAction(noteId: string, projectId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
-  if (!project) throw new Error('Not found')
-  await supabase.from('project_notes').delete().eq('id', noteId).eq('project_id', projectId)
+  await assertProjectOwner(projectId)
+  await db.delete(project_notes).where(and(eq(project_notes.id, noteId), eq(project_notes.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
 // ---- Checklist tasks (available on all projects) ---------------------------
 
-async function assertProjectOwner(projectId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
-  if (!project) throw new Error('Not found')
-  return supabase
-}
-
 export async function addTaskAction(
   projectId: string,
   fields: { title: string; cost: number | null; due_date: string | null }
 ) {
-  const supabase = await assertProjectOwner(projectId)
+  await assertProjectOwner(projectId)
   // New tasks sort to the bottom of the open list.
-  const { data: last } = await supabase
-    .from('project_tasks')
-    .select('sort_order')
-    .eq('project_id', projectId)
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  await supabase.from('project_tasks').insert({
+  const [last] = await db.select({ sort_order: project_tasks.sort_order }).from(project_tasks)
+    .where(eq(project_tasks.project_id, projectId)).orderBy(desc(project_tasks.sort_order)).limit(1)
+  await db.insert(project_tasks).values({
     project_id: projectId,
     title: fields.title,
     cost: fields.cost,
@@ -118,8 +101,9 @@ export async function addTaskAction(
 }
 
 export async function toggleTaskAction(projectId: string, taskId: string, completed: boolean) {
-  const supabase = await assertProjectOwner(projectId)
-  await supabase.from('project_tasks').update({ completed }).eq('id', taskId).eq('project_id', projectId)
+  await assertProjectOwner(projectId)
+  await db.update(project_tasks).set({ completed })
+    .where(and(eq(project_tasks.id, taskId), eq(project_tasks.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
@@ -128,47 +112,37 @@ export async function updateTaskAction(
   taskId: string,
   fields: { title: string; cost: number | null; due_date: string | null }
 ) {
-  const supabase = await assertProjectOwner(projectId)
-  await supabase
-    .from('project_tasks')
-    .update({ title: fields.title, cost: fields.cost, due_date: fields.due_date })
-    .eq('id', taskId)
-    .eq('project_id', projectId)
+  await assertProjectOwner(projectId)
+  await db.update(project_tasks).set({ title: fields.title, cost: fields.cost, due_date: fields.due_date })
+    .where(and(eq(project_tasks.id, taskId), eq(project_tasks.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function deleteTaskAction(projectId: string, taskId: string) {
-  const supabase = await assertProjectOwner(projectId)
-  await supabase.from('project_tasks').delete().eq('id', taskId).eq('project_id', projectId)
+  await assertProjectOwner(projectId)
+  await db.delete(project_tasks).where(and(eq(project_tasks.id, taskId), eq(project_tasks.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function rotateShareTokenAction(projectId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  await supabase.from('projects').update({ share_token: crypto.randomUUID() }).eq('id', projectId).eq('user_id', user.id)
+  await assertProjectOwner(projectId)
+  await db.update(projects).set({ share_token: crypto.randomUUID() }).where(eq(projects.id, projectId))
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function toggleFinancialsAction(projectId: string, current: boolean) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  await supabase.from('projects').update({ show_financials_on_share: !current }).eq('id', projectId).eq('user_id', user.id)
+  await assertProjectOwner(projectId)
+  await db.update(projects).set({ show_financials_on_share: !current }).where(eq(projects.id, projectId))
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function saveFileMetaAction(projectId: string, name: string, storagePath: string, sizeBytes: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
-  if (!project) throw new Error('Not found')
+  const user = await assertProjectOwner(projectId)
   assertOwnedUploadPath(user.id, projectId, storagePath, /\.pdf$/i)
   assertUploadSize(sizeBytes)
-  const { error } = await supabase.from('project_files').insert({ project_id: projectId, name, storage_path: storagePath, size_bytes: sizeBytes })
-  if (error) {
+  try {
+    await db.insert(project_files).values({ project_id: projectId, name, storage_path: storagePath, size_bytes: sizeBytes })
+  } catch {
     // Don't leave an orphaned object eating the free storage allowance.
     await removeObjects([storagePath]).catch(() => {})
     throw new Error('The file uploaded but could not be saved to the project. Please try again.')
@@ -177,44 +151,31 @@ export async function saveFileMetaAction(projectId: string, name: string, storag
 }
 
 export async function toggleFileVisibilityAction(fileId: string, projectId: string, current: boolean) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  // Verify the file belongs to a project owned by this user.
-  const { data: file } = await supabase
-    .from('project_files')
-    .select('id, projects!inner(user_id)')
-    .eq('id', fileId)
-    .eq('project_id', projectId)
-    .single()
-  if (!file || (file.projects as unknown as { user_id: string })?.user_id !== user.id) {
-    throw new Error('Not found')
-  }
-  await supabase.from('project_files').update({ is_client_visible: !current }).eq('id', fileId)
+  await assertProjectOwner(projectId)
+  await db.update(project_files).set({ is_client_visible: !current })
+    .where(and(eq(project_files.id, fileId), eq(project_files.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function deleteFileAction(fileId: string, projectId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  // Verify ownership AND read the storage path from the row. Never trust a
-  // caller-supplied path: the service-role client below bypasses Storage RLS.
-  const { data: file } = await supabase
-    .from('project_files')
-    .select('id, storage_path, projects!inner(user_id)')
-    .eq('id', fileId)
-    .eq('project_id', projectId)
-    .single()
-  if (!file || (file.projects as unknown as { user_id: string })?.user_id !== user.id) {
-    throw new Error('Not found')
-  }
+  await assertProjectOwner(projectId)
+  // Read the storage path from the owned row — never trust a caller-supplied path.
+  const [file] = await db.select({ storage_path: project_files.storage_path }).from(project_files)
+    .where(and(eq(project_files.id, fileId), eq(project_files.project_id, projectId))).limit(1)
+  if (!file) throw new Error('Not found')
   await removeObjects([file.storage_path])
-  await supabase.from('project_files').delete().eq('id', fileId)
+  await db.delete(project_files).where(eq(project_files.id, fileId))
   revalidatePath(`/projects/${projectId}`)
 }
 
 // ---- Client deliverables (payment-gated draft/final drawings) ---------------
+
+async function assertOwnInvoice(userId: string, invoiceId: string | null) {
+  if (!invoiceId) return
+  const [inv] = await db.select({ id: invoices.id }).from(invoices)
+    .where(and(eq(invoices.id, invoiceId), eq(invoices.user_id, userId))).limit(1)
+  if (!inv) throw new Error('Invoice not found')
+}
 
 export async function saveDeliverableAction(
   projectId: string,
@@ -228,25 +189,25 @@ export async function saveDeliverableAction(
     linkedInvoiceId: string | null
   }
 ) {
-  const supabase = await assertProjectOwner(projectId)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const user = await assertProjectOwner(projectId)
   assertOwnedUploadPath(user.id, projectId, fields.storagePath, /\.pdf$/i)
   assertUploadSize(fields.sizeBytes)
   for (const p of [...fields.previewPaths, ...fields.zoomPaths]) {
     assertOwnedUploadPath(user.id, projectId, p, /\.jpg$/i)
   }
-  const { error } = await supabase.from('project_deliverables').insert({
-    project_id: projectId,
-    name: fields.name,
-    storage_path: fields.storagePath,
-    preview_paths: fields.previewPaths,
-    zoom_paths: fields.zoomPaths,
-    page_count: fields.pageCount,
-    size_bytes: fields.sizeBytes,
-    linked_invoice_id: fields.linkedInvoiceId,
-  })
-  if (error) {
+  await assertOwnInvoice(user.id, fields.linkedInvoiceId)
+  try {
+    await db.insert(project_deliverables).values({
+      project_id: projectId,
+      name: fields.name,
+      storage_path: fields.storagePath,
+      preview_paths: fields.previewPaths,
+      zoom_paths: fields.zoomPaths,
+      page_count: fields.pageCount,
+      size_bytes: fields.sizeBytes,
+      linked_invoice_id: fields.linkedInvoiceId,
+    })
+  } catch {
     // Don't leave the original + preview/zoom JPEGs orphaned in storage.
     await removeObjects([fields.storagePath, ...fields.previewPaths, ...fields.zoomPaths]).catch(() => {})
     throw new Error('The drawing uploaded but could not be saved to the project. Please try again.')
@@ -254,43 +215,30 @@ export async function saveDeliverableAction(
   revalidatePath(`/projects/${projectId}`)
 }
 
-export async function toggleDeliverableUnlockAction(
-  deliverableId: string,
-  projectId: string,
-  current: boolean
-) {
-  const supabase = await assertProjectOwner(projectId)
-  await supabase
-    .from('project_deliverables')
-    .update({ manual_unlock: !current })
-    .eq('id', deliverableId)
-    .eq('project_id', projectId)
+export async function toggleDeliverableUnlockAction(deliverableId: string, projectId: string, current: boolean) {
+  await assertProjectOwner(projectId)
+  await db.update(project_deliverables).set({ manual_unlock: !current })
+    .where(and(eq(project_deliverables.id, deliverableId), eq(project_deliverables.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
-export async function updateDeliverableInvoiceLinkAction(
-  deliverableId: string,
-  projectId: string,
-  invoiceId: string | null
-) {
-  const supabase = await assertProjectOwner(projectId)
-  await supabase
-    .from('project_deliverables')
-    .update({ linked_invoice_id: invoiceId })
-    .eq('id', deliverableId)
-    .eq('project_id', projectId)
+export async function updateDeliverableInvoiceLinkAction(deliverableId: string, projectId: string, invoiceId: string | null) {
+  const user = await assertProjectOwner(projectId)
+  await assertOwnInvoice(user.id, invoiceId)
+  await db.update(project_deliverables).set({ linked_invoice_id: invoiceId })
+    .where(and(eq(project_deliverables.id, deliverableId), eq(project_deliverables.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
 }
 
 export async function deleteDeliverableAction(deliverableId: string, projectId: string) {
-  const supabase = await assertProjectOwner(projectId)
+  await assertProjectOwner(projectId)
   // Pull the storage paths (original + previews + zoom) before deleting the row.
-  const { data: deliverable } = await supabase
-    .from('project_deliverables')
-    .select('storage_path, preview_paths, zoom_paths')
-    .eq('id', deliverableId)
-    .eq('project_id', projectId)
-    .single()
+  const [deliverable] = await db.select({
+    storage_path: project_deliverables.storage_path,
+    preview_paths: project_deliverables.preview_paths,
+    zoom_paths: project_deliverables.zoom_paths,
+  }).from(project_deliverables)
+    .where(and(eq(project_deliverables.id, deliverableId), eq(project_deliverables.project_id, projectId))).limit(1)
   if (!deliverable) throw new Error('Not found')
 
   const asPaths = (v: unknown): string[] => (Array.isArray(v) ? (v as string[]) : [])
@@ -301,6 +249,6 @@ export async function deleteDeliverableAction(deliverableId: string, projectId: 
   ].filter(Boolean)
 
   await removeObjects(paths)
-  await supabase.from('project_deliverables').delete().eq('id', deliverableId).eq('project_id', projectId)
+  await db.delete(project_deliverables).where(eq(project_deliverables.id, deliverableId))
   revalidatePath(`/projects/${projectId}`)
 }

@@ -1,6 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
+import { desc, eq } from 'drizzle-orm'
+import { db, invoices as invoicesTable, projects as projectsTable, business_settings } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import { totalBytes } from '@/lib/storage'
-import { redirect } from 'next/navigation'
 import { StatsCards } from '@/components/dashboard/StatsCards'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
 import { ProjectMap } from '@/components/dashboard/ProjectMap'
@@ -14,19 +15,28 @@ import { FREE_STORAGE_BYTES } from '@/lib/uploadLimits'
 import { todayInBusinessTz } from '@/lib/dates'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
 
-  const [{ data: invoices }, { data: projects }, { data: recentInvoices }, { data: settings }, { data: storageUsage }] = await Promise.all([
-    supabase.from('invoices').select('currency, total, amount_paid, status, created_at, due_date'),
-    supabase.from('projects').select('*, clients(name)').order('updated_at', { ascending: false }),
-    supabase
-      .from('invoices')
-      .select('*, projects(title, clients(name)), clients(name)')
-      .order('created_at', { ascending: false })
-      .limit(5),
-    supabase.from('business_settings').select('max_workload').eq('user_id', user.id).single(),
+  const [invoices, projects, recentInvoices, settings, { data: storageUsage }] = await Promise.all([
+    db.select({
+      currency: invoicesTable.currency, total: invoicesTable.total, amount_paid: invoicesTable.amount_paid,
+      status: invoicesTable.status, created_at: invoicesTable.created_at, due_date: invoicesTable.due_date,
+    }).from(invoicesTable).where(eq(invoicesTable.user_id, user.id)),
+    db.query.projects.findMany({
+      where: eq(projectsTable.user_id, user.id),
+      with: { clients: { columns: { name: true } } },
+      orderBy: desc(projectsTable.updated_at),
+    }),
+    db.query.invoices.findMany({
+      where: eq(invoicesTable.user_id, user.id),
+      with: {
+        projects: { columns: { title: true }, with: { clients: { columns: { name: true } } } },
+        clients: { columns: { name: true } },
+      },
+      orderBy: desc(invoicesTable.created_at),
+      limit: 5,
+    }),
+    db.query.business_settings.findFirst({ columns: { max_workload: true }, where: eq(business_settings.user_id, user.id) }),
     // Real bytes stored in the bucket (one list call per 1000 objects).
     // Falls back to 0 so the dashboard still renders if storage is unreachable.
     totalBytes().then((n) => ({ data: n })).catch(() => ({ data: 0 })),
@@ -60,7 +70,7 @@ export default async function DashboardPage() {
   const cutoff30 = new Date(Date.now() - 30 * 864e5).toISOString()
   const invoiced30Map: Record<string, number> = {}
   for (const inv of billed) {
-    if (inv.created_at >= cutoff30) {
+    if ((inv.created_at ?? '') >= cutoff30) {
       invoiced30Map[inv.currency] = (invoiced30Map[inv.currency] ?? 0) + Number(inv.total)
     }
   }

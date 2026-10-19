@@ -1,10 +1,15 @@
+import { redirect } from 'next/navigation'
 import { login } from './actions'
+import { getUser } from '@/lib/session'
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
 }) {
+  if (await getUser()) redirect('/dashboard')
+  const { error } = await searchParams
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50">
       <div className="w-full max-w-md p-8 bg-white rounded-xl border border-[#e0e0e3] shadow-card">
@@ -12,6 +17,11 @@ export default function LoginPage({
           <h1 className="text-2xl font-bold text-gray-900">OW Studio</h1>
           <p className="text-[#8a8c94] mt-1 text-sm">Project & invoice management</p>
         </div>
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            Wrong email or password. Please try again.
+          </p>
+        )}
         <form action={login} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-1">

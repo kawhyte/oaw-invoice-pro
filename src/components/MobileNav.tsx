@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { LayoutDashboard, DraftingCompass, ReceiptText, Users, Settings, LogOut, Menu } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { logout } from '@/app/login/actions'
 
 const tabs = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -14,7 +14,6 @@ const tabs = [
 
 export function MobileNav() {
   const pathname = usePathname()
-  const router = useRouter()
   const [sheetOpen, setSheetOpen] = useState(false)
 
   return (
@@ -82,9 +81,7 @@ export function MobileNav() {
               <button
                 onClick={async () => {
                   setSheetOpen(false)
-                  const supabase = createClient()
-                  await supabase.auth.signOut()
-                  router.push('/login')
+                  await logout()
                 }}
                 className="flex items-center gap-4 px-3 py-3.5 rounded-xl w-full text-left text-[#93000a] hover:bg-[#ffdad6]/30 font-medium"
               >

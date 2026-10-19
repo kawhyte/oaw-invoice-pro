@@ -1,6 +1,8 @@
 import { Fragment } from 'react'
-import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
+import { and, eq } from 'drizzle-orm'
+import { db, invoices, project_files, invoice_line_items } from '@/db'
+import { requireUserPage } from '@/lib/session'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { InvoiceActions } from '@/components/invoices/InvoiceActions'
 import { SeparateInvoiceButton } from '@/components/invoices/SeparateInvoiceButton'
@@ -10,16 +12,19 @@ import { discountAmountFor } from '@/lib/invoiceCalc'
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
 
-  const { data: invoice } = await supabase
-    .from('invoices')
-    .select('*, projects(id, title, job_type, location_address, clients(id, name, email, phone)), clients(id, name, email, phone), invoice_line_items(*)')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+  const invoice = await db.query.invoices.findFirst({
+    where: and(eq(invoices.id, id), eq(invoices.user_id, user.id)),
+    with: {
+      projects: {
+        columns: { id: true, title: true, job_type: true, location_address: true },
+        with: { clients: { columns: { id: true, name: true, email: true, phone: true } } },
+      },
+      clients: { columns: { id: true, name: true, email: true, phone: true } },
+      invoice_line_items: { orderBy: invoice_line_items.sort_order },
+    },
+  })
 
   if (!invoice) notFound()
 
@@ -56,11 +61,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     : []
 
   // Whether this invoice already has a saved PDF (drives "Update saved copy").
-  const { data: savedFiles } = await supabase
-    .from('project_files')
-    .select('id, project_id')
-    .eq('invoice_id', id)
-    .limit(1)
+  const savedFiles = await db.select({ id: project_files.id, project_id: project_files.project_id })
+    .from(project_files).where(eq(project_files.invoice_id, id)).limit(1)
   const savedFile = (savedFiles?.[0] as { id: string; project_id: string } | undefined)
     ? { id: savedFiles![0].id, projectId: savedFiles![0].project_id }
     : null
@@ -201,7 +203,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                   <span className="data-mono">- {fmt(discountAmountFor(invoice.subtotal, invoice.discount_type, invoice.discount_value))}</span>
                 </div>
               )}
-              {invoice.gct_rate > 0 && <div className="flex justify-between text-[#5a5c62]"><span>GCT (15%)</span><span className="data-mono">{fmt(invoice.gct_amount)}</span></div>}
+              {(invoice.gct_rate ?? 0) > 0 && <div className="flex justify-between text-[#5a5c62]"><span>GCT (15%)</span><span className="data-mono">{fmt(invoice.gct_amount ?? 0)}</span></div>}
               {invoice.additions_amount > 0 && (
                 <div className="flex justify-between text-[#5a5c62]">
                   <span>{invoice.additions_description || 'Additions'}</span>
@@ -223,7 +225,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
         <div>
           <p className="label-caps mb-1">Date Issued</p>
-          <p className="text-[#5a5c62]">{new Date(invoice.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-[#5a5c62]">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}</p>
         </div>
         {invoice.due_date && (
           <div>

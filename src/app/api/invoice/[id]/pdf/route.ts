@@ -1,15 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/session'
 import { renderInvoicePdf } from '@/lib/invoicePdf'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
 
-  const result = await renderInvoicePdf(supabase, id, user.id)
+  const result = await renderInvoicePdf(id, user.id)
   if (!result) return new Response('Not found', { status: 404 })
 
   const url = new URL(request.url)

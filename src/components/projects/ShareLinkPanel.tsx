@@ -6,14 +6,14 @@ import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import { shareLink, whatsAppUrl } from '@/lib/share'
 
-interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; deliverableCount: number; noteCount: number; invoiceCount: number; projectTitle: string; clientName: string | null; clientPhone: string | null }
+interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; deliverableCount: number; noteCount: number; invoiceCount: number; projectTitle: string; clientName: string | null; clientPhone: string | null; origin: string }
 
-export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, deliverableCount, noteCount, invoiceCount, projectTitle, clientName, clientPhone }: Props) {
+export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, deliverableCount, noteCount, invoiceCount, projectTitle, clientName, clientPhone, origin }: Props) {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
   const toast = useToast()
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  // `origin` comes from the server (request host), so server and client render the same absolute link.
   const shareUrl = `${origin}/share/${shareToken}`
 
   function handleCopy() {

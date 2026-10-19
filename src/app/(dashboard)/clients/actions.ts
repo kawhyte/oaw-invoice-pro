@@ -1,46 +1,36 @@
 'use server'
-import { createClient as createSupabaseClient } from '@/lib/supabase/server'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { db, clients } from '@/db'
+import { requireUser } from '@/lib/session'
+import type { Currency } from '@/types'
 
-export async function createClientAction(formData: FormData) {
-  const supabase = await createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await supabase.from('clients').insert({
-    user_id: user.id,
+function clientFields(formData: FormData) {
+  return {
     name: formData.get('name') as string,
     email: (formData.get('email') as string) || null,
     phone: (formData.get('phone') as string) || null,
     company: (formData.get('company') as string) || null,
     address: (formData.get('address') as string) || null,
-    currency: (formData.get('currency') as string) || null,
+    currency: ((formData.get('currency') as string) || null) as Currency | null,
     country: (formData.get('country') as string) || null,
-  })
+  }
+}
+
+export async function createClientAction(formData: FormData) {
+  const user = await requireUser()
+  await db.insert(clients).values({ user_id: user.id, ...clientFields(formData) })
   revalidatePath('/clients')
 }
 
 export async function updateClientAction(id: string, formData: FormData) {
-  const supabase = await createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await supabase.from('clients').update({
-    name: formData.get('name') as string,
-    email: (formData.get('email') as string) || null,
-    phone: (formData.get('phone') as string) || null,
-    company: (formData.get('company') as string) || null,
-    address: (formData.get('address') as string) || null,
-    currency: (formData.get('currency') as string) || null,
-    country: (formData.get('country') as string) || null,
-  }).eq('id', id).eq('user_id', user.id)
+  const user = await requireUser()
+  await db.update(clients).set(clientFields(formData)).where(and(eq(clients.id, id), eq(clients.user_id, user.id)))
   revalidatePath('/clients')
 }
 
 export async function deleteClientAction(id: string) {
-  const supabase = await createSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  await supabase.from('clients').delete().eq('id', id).eq('user_id', user.id)
+  const user = await requireUser()
+  await db.delete(clients).where(and(eq(clients.id, id), eq(clients.user_id, user.id)))
   revalidatePath('/clients')
 }

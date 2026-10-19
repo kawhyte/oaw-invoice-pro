@@ -1,15 +1,18 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { and, desc, eq } from 'drizzle-orm'
+import { db, projects, business_settings } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import { InvoiceForm } from '@/components/invoices/InvoiceForm'
 
 export default async function NewInvoicePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
 
-  const [{ data: projects }, { data: bizSettings }] = await Promise.all([
-    supabase.from('projects').select('*, clients(*)').eq('user_id', user.id).eq('is_personal', false).order('created_at', { ascending: false }),
-    supabase.from('business_settings').select('*').eq('user_id', user.id).single(),
+  const [projectRows, bizSettings] = await Promise.all([
+    db.query.projects.findMany({
+      where: and(eq(projects.user_id, user.id), eq(projects.is_personal, false)),
+      with: { clients: true },
+      orderBy: desc(projects.created_at),
+    }),
+    db.query.business_settings.findFirst({ where: eq(business_settings.user_id, user.id) }),
   ])
 
   return (
@@ -17,7 +20,7 @@ export default async function NewInvoicePage() {
       <div className="mb-6">
         <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">New Invoice</h1>
       </div>
-      <InvoiceForm projects={(projects ?? []) as any} bizSettings={bizSettings} />
+      <InvoiceForm projects={projectRows as any} bizSettings={(bizSettings ?? null) as any} />
     </div>
   )
 }

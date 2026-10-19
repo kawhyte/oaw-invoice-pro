@@ -1,19 +1,25 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { auth } from '@/lib/auth'
 
 export async function login(formData: FormData) {
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  })
-  if (error) redirect('/login?error=1')
+  try {
+    // nextCookies() (in lib/auth) writes the session cookie from this server action.
+    await auth.api.signInEmail({
+      body: {
+        email: String(formData.get('email') ?? '').trim(),
+        password: String(formData.get('password') ?? ''),
+      },
+      headers: await headers(),
+    })
+  } catch {
+    redirect('/login?error=1')
+  }
   redirect('/dashboard')
 }
 
 export async function logout() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
+  await auth.api.signOut({ headers: await headers() })
   redirect('/login')
 }

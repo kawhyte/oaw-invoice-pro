@@ -1,6 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { db, projects, project_notes, project_files, clients as clientsTable, invoices as invoicesTable, project_tasks, project_deliverables, business_settings, invoice_line_items } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import { signedGetUrl } from '@/lib/storage'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import Link from 'next/link'
 import { ProjectNotes } from '@/components/projects/ProjectNotes'
 import { ShareLinkPanel } from '@/components/projects/ShareLinkPanel'
@@ -14,46 +17,57 @@ import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
 import { isFinalUnlocked } from '@/lib/deliverables'
-import type { Client, ProjectFile, ProjectDeliverable } from '@/types'
+import type { Client, ProjectFile, ProjectDeliverable, ProjectNote, ProjectTask } from '@/types'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
+  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
+  const h = await headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
+  const origin = `${h.get('x-forwarded-proto') ?? (/^(localhost|127\.0\.0\.1)(:|$)/.test(host) ? 'http' : 'https')}://${host}`
 
-  const [{ data: project }, { data: notes }, { data: files }, { data: allClients }, { data: invoices }, { data: tasks }, { data: deliverables }, { data: settings }] = await Promise.all([
-    supabase.from('projects').select('*, clients(*)').eq('id', id).eq('user_id', user.id).single(),
-    supabase.from('project_notes').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-    supabase.from('project_files').select('*').eq('project_id', id).order('uploaded_at', { ascending: false }),
-    supabase.from('clients').select('*').order('name'),
-    supabase.from('invoices').select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id').eq('project_id', id).order('created_at', { ascending: false }),
-    supabase.from('project_tasks').select('*').eq('project_id', id).order('sort_order', { ascending: true }),
-    supabase.from('project_deliverables').select('*').eq('project_id', id).order('created_at', { ascending: false }),
-    supabase.from('business_settings').select('business_name').eq('user_id', user.id).maybeSingle(),
-  ])
-
+  // Ownership is decided by the project row; child rows are only rendered if it exists.
+  const project = await db.query.projects.findFirst({
+    where: and(eq(projects.id, id), eq(projects.user_id, user.id)),
+    with: { clients: true },
+  })
   if (!project) notFound()
+
+  const invoiceCols = {
+    id: invoicesTable.id, invoice_number: invoicesTable.invoice_number, status: invoicesTable.status, total: invoicesTable.total,
+    amount_paid: invoicesTable.amount_paid, currency: invoicesTable.currency, created_at: invoicesTable.created_at, project_id: invoicesTable.project_id,
+  }
+  const [notes, files, allClients, invoices, tasks, deliverables, settings] = await Promise.all([
+    db.select().from(project_notes).where(eq(project_notes.project_id, id)).orderBy(desc(project_notes.created_at)),
+    db.select().from(project_files).where(eq(project_files.project_id, id)).orderBy(desc(project_files.uploaded_at)),
+    db.select().from(clientsTable).where(eq(clientsTable.user_id, user.id)).orderBy(asc(clientsTable.name)),
+    db.select(invoiceCols).from(invoicesTable)
+      .where(and(eq(invoicesTable.project_id, id), eq(invoicesTable.user_id, user.id)))
+      .orderBy(desc(invoicesTable.created_at)),
+    db.select().from(project_tasks).where(eq(project_tasks.project_id, id)).orderBy(asc(project_tasks.sort_order)),
+    db.select().from(project_deliverables).where(eq(project_deliverables.project_id, id)).orderBy(desc(project_deliverables.created_at)),
+    db.query.business_settings.findFirst({ columns: { business_name: true }, where: eq(business_settings.user_id, user.id) }),
+  ])
 
   // Personal projects are never billed — skip the combined-invoice lookup entirely.
   // Combined invoices touch this project via their line items (project_id is null on the invoice).
-  const { data: combinedLi } = project.is_personal
-    ? { data: [] as { invoice_id: string }[] }
-    : await supabase.from('invoice_line_items').select('invoice_id').eq('project_id', id)
-  const combinedIds = [...new Set((combinedLi ?? []).map((r: { invoice_id: string }) => r.invoice_id))]
-  const { data: combinedInvoices } = combinedIds.length
-    ? await supabase
-        .from('invoices')
-        .select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id, invoice_line_items(section_title)')
-        .eq('user_id', user.id)
-        .in('id', combinedIds)
-        .is('project_id', null)
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  const combinedLi = project.is_personal
+    ? []
+    : await db.select({ invoice_id: invoice_line_items.invoice_id }).from(invoice_line_items).where(eq(invoice_line_items.project_id, id))
+  const combinedIds = [...new Set(combinedLi.map((r) => r.invoice_id))]
+  const combinedInvoices = combinedIds.length
+    ? await db.query.invoices.findMany({
+        columns: { id: true, invoice_number: true, status: true, total: true, amount_paid: true, currency: true, created_at: true, project_id: true },
+        with: { invoice_line_items: { columns: { section_title: true }, orderBy: invoice_line_items.sort_order } },
+        where: and(eq(invoicesTable.user_id, user.id), inArray(invoicesTable.id, combinedIds), isNull(invoicesTable.project_id)),
+        orderBy: desc(invoicesTable.created_at),
+      })
+    : []
   const allInvoices = [...(invoices ?? []), ...(combinedInvoices ?? [])]
 
   const filesWithUrls = await Promise.all(
-    (files ?? []).map(async (file: ProjectFile) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 3600) }))
+    (files as ProjectFile[]).map(async (file) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 3600) }))
   )
 
   // Resolve each deliverable's lock state against its linked invoice.
@@ -93,7 +107,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             {project.is_personal ? 'Personal project' : (project.clients as any)?.name}
           </p>
         </div>
-        <ProjectDetailHeader project={project as any} clients={allClients ?? []} />
+        <ProjectDetailHeader project={project as any} clients={allClients as Client[]} />
       </div>
 
       {(project.description || project.location_address) && (
@@ -113,7 +127,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {project.is_personal && <BudgetTracker budget={project.budget} tasks={tasks ?? []} />}
+      {project.is_personal && <BudgetTracker budget={project.budget} tasks={tasks as ProjectTask[]} />}
 
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card">
         <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-100 sm:flex-row sm:items-start sm:justify-between">
@@ -220,11 +234,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
       )}
 
-      <TaskChecklist projectId={id} tasks={tasks ?? []} />
+      <TaskChecklist projectId={id} tasks={tasks as ProjectTask[]} />
 
-      <ProjectNotes projectId={id} notes={notes ?? []} showClientBadge={!project.is_personal} />
+      <ProjectNotes projectId={id} notes={notes as ProjectNote[]} showClientBadge={!project.is_personal} />
       {!project.is_personal && (
-        <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.filter(f => f.is_client_visible).length} deliverableCount={deliverables?.length ?? 0} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} projectTitle={project.title} clientName={(project.clients as Pick<Client, 'name' | 'phone'> | null)?.name ?? null} clientPhone={(project.clients as Pick<Client, 'name' | 'phone'> | null)?.phone ?? null} />
+        <ShareLinkPanel origin={origin} projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share ?? false} fileCount={filesWithUrls.filter(f => f.is_client_visible).length} deliverableCount={deliverables?.length ?? 0} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} projectTitle={project.title} clientName={(project.clients as Pick<Client, 'name' | 'phone'> | null)?.name ?? null} clientPhone={(project.clients as Pick<Client, 'name' | 'phone'> | null)?.phone ?? null} />
       )}
     </div>
   )

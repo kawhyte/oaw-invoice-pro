@@ -1,5 +1,7 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { eq } from 'drizzle-orm'
+import { db, business_settings } from '@/db'
+import { requireUser } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
 import { signedPutUrl, removeObjects, resolveLogoUrl } from '@/lib/storage'
 
@@ -12,9 +14,7 @@ function logoKeyFrom(value: string | null | undefined): string | null {
 }
 
 export async function createLogoUploadAction(contentType: string, sizeBytes: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const user = await requireUser()
   if (contentType !== 'image/png' && contentType !== 'image/jpeg') throw new Error('PNG or JPG only')
   if (sizeBytes <= 0 || sizeBytes > 2 * 1024 * 1024) throw new Error('Logo must be under 2 MB')
   const key = `logos/${user.id}/logo-${Date.now()}.${contentType === 'image/png' ? 'png' : 'jpg'}`
@@ -22,12 +22,9 @@ export async function createLogoUploadAction(contentType: string, sizeBytes: num
 }
 
 export async function saveSettingsAction(formData: FormData) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const user = await requireUser()
 
-  await supabase.from('business_settings').upsert({
-    user_id: user.id,
+  const fields = {
     business_name: (formData.get('business_name') as string) || null,
     owner_name: (formData.get('owner_name') as string) || null,
     email: (formData.get('email') as string) || null,
@@ -35,7 +32,9 @@ export async function saveSettingsAction(formData: FormData) {
     address: (formData.get('address') as string) || null,
     max_workload: formData.get('max_workload') ? Number(formData.get('max_workload')) : null,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' })
+  }
+  await db.insert(business_settings).values({ user_id: user.id, ...fields })
+    .onConflictDoUpdate({ target: business_settings.user_id, set: fields })
 
   revalidatePath('/settings')
   revalidatePath('/dashboard')
@@ -43,17 +42,12 @@ export async function saveSettingsAction(formData: FormData) {
 
 /** Saves an uploaded logo's key, deletes the previous logo object, and returns a displayable URL. */
 export async function saveLogoAction(key: string): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const user = await requireUser()
   if (!key.startsWith(`logos/${user.id}/`)) throw new Error('Invalid logo path')
-  const { data: current } = await supabase
-    .from('business_settings').select('logo_url').eq('user_id', user.id).maybeSingle()
-  const { error } = await supabase.from('business_settings').upsert(
-    { user_id: user.id, logo_url: key, updated_at: new Date().toISOString() },
-    { onConflict: 'user_id' }
-  )
-  if (error) throw new Error('Could not save the logo.')
+  const current = await db.query.business_settings.findFirst({ columns: { logo_url: true }, where: eq(business_settings.user_id, user.id) })
+  const updated_at = new Date().toISOString()
+  await db.insert(business_settings).values({ user_id: user.id, logo_url: key, updated_at })
+    .onConflictDoUpdate({ target: business_settings.user_id, set: { logo_url: key, updated_at } })
   const old = logoKeyFrom(current?.logo_url)
   if (old && old !== key) await removeObjects([old])
   revalidatePath('/settings')
@@ -62,17 +56,14 @@ export async function saveLogoAction(key: string): Promise<string | null> {
 }
 
 export async function removeLogoAction() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  const user = await requireUser()
 
-  const { data: settings } = await supabase
-    .from('business_settings').select('logo_url').eq('user_id', user.id).single()
+  const settings = await db.query.business_settings.findFirst({ columns: { logo_url: true }, where: eq(business_settings.user_id, user.id) })
 
   const key = logoKeyFrom(settings?.logo_url)
   if (key) await removeObjects([key])
 
-  await supabase.from('business_settings').update({ logo_url: null }).eq('user_id', user.id)
+  await db.update(business_settings).set({ logo_url: null }).where(eq(business_settings.user_id, user.id))
   revalidatePath('/settings')
   revalidatePath('/', 'layout')
 }

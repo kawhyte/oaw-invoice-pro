@@ -1,81 +1,60 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
-import { geocodeAddress } from '@/lib/geocode'
+import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { db, projects } from '@/db'
+import { requireUser } from '@/lib/session'
+import { geocodeAddress } from '@/lib/geocode'
+import type { ProjectStatus } from '@/types'
 
-export async function createProjectAction(formData: FormData): Promise<{ geocoded: boolean }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
+async function projectFields(formData: FormData) {
   const address = formData.get('location_address') as string
   const coords = address ? await geocodeAddress(address) : null
   const isPersonal = formData.get('is_personal') === 'true'
   const budgetRaw = formData.get('budget') as string
+  return {
+    geocoded: !address || coords !== null,
+    fields: {
+      client_id: isPersonal ? null : (formData.get('client_id') as string),
+      is_personal: isPersonal,
+      budget: isPersonal && budgetRaw ? Number(budgetRaw) : null,
+      title: formData.get('title') as string,
+      description: (formData.get('description') as string) || null,
+      status: formData.get('status') as ProjectStatus,
+      job_type: (formData.get('job_type') as string) || null,
+      location_address: address || null,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
+    },
+  }
+}
 
-  await supabase.from('projects').insert({
-    user_id: user.id,
-    client_id: isPersonal ? null : (formData.get('client_id') as string),
-    is_personal: isPersonal,
-    budget: isPersonal && budgetRaw ? Number(budgetRaw) : null,
-    title: formData.get('title') as string,
-    description: formData.get('description') as string || null,
-    status: formData.get('status') as string,
-    job_type: formData.get('job_type') as string || null,
-    location_address: address || null,
-    lat: coords?.lat ?? null,
-    lng: coords?.lng ?? null,
-  })
+export async function createProjectAction(formData: FormData): Promise<{ geocoded: boolean }> {
+  const user = await requireUser()
+  const { geocoded, fields } = await projectFields(formData)
+  await db.insert(projects).values({ user_id: user.id, ...fields })
   revalidatePath('/projects')
-  return { geocoded: !address || coords !== null }
+  return { geocoded }
 }
 
 export async function updateProjectAction(id: string, formData: FormData): Promise<{ geocoded: boolean }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  const address = formData.get('location_address') as string
-  const coords = address ? await geocodeAddress(address) : null
-  const isPersonal = formData.get('is_personal') === 'true'
-  const budgetRaw = formData.get('budget') as string
-
-  await supabase.from('projects').update({
-    client_id: isPersonal ? null : (formData.get('client_id') as string),
-    is_personal: isPersonal,
-    budget: isPersonal && budgetRaw ? Number(budgetRaw) : null,
-    title: formData.get('title') as string,
-    description: formData.get('description') as string || null,
-    status: formData.get('status') as string,
-    job_type: formData.get('job_type') as string || null,
-    location_address: address || null,
-    lat: coords?.lat ?? null,
-    lng: coords?.lng ?? null,
-    updated_at: new Date().toISOString(),
-  }).eq('id', id).eq('user_id', user.id)
+  const user = await requireUser()
+  const { geocoded, fields } = await projectFields(formData)
+  await db.update(projects).set({ ...fields, updated_at: new Date().toISOString() })
+    .where(and(eq(projects.id, id), eq(projects.user_id, user.id)))
   revalidatePath('/projects')
   revalidatePath(`/projects/${id}`)
-  return { geocoded: !address || coords !== null }
+  return { geocoded }
 }
 
 export async function deleteProjectAction(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  await supabase.from('projects').delete().eq('id', id).eq('user_id', user.id)
+  const user = await requireUser()
+  await db.delete(projects).where(and(eq(projects.id, id), eq(projects.user_id, user.id)))
   revalidatePath('/projects')
 }
 
 export async function rotateShareTokenAction(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-  await supabase.rpc('gen_random_uuid').then(async () => {
-    await supabase
-      .from('projects')
-      .update({ share_token: crypto.randomUUID() })
-      .eq('id', id)
-      .eq('user_id', user.id)
-  })
+  const user = await requireUser()
+  await db.update(projects).set({ share_token: crypto.randomUUID() })
+    .where(and(eq(projects.id, id), eq(projects.user_id, user.id)))
   revalidatePath(`/projects/${id}`)
 }

@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { resolveLogoUrl } from '@/lib/storage'
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { eq } from 'drizzle-orm'
+import { db, business_settings } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import { NavLinks } from '@/components/NavLinks'
 import { NavDropdown } from '@/components/NavDropdown'
 import { MobileNav } from '@/components/MobileNav'
@@ -9,15 +10,11 @@ import { ConfirmProvider } from '@/components/ui/ConfirmDialog'
 import { ToastProvider } from '@/components/ui/Toast'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: bizSettings } = await supabase
-    .from('business_settings')
-    .select('business_name, logo_url')
-    .eq('user_id', user.id)
-    .single()
+  const user = await requireUserPage()
+  const bizSettings = await db.query.business_settings.findFirst({
+    columns: { business_name: true, logo_url: true },
+    where: eq(business_settings.user_id, user.id),
+  })
   const logoUrl = await resolveLogoUrl(bizSettings?.logo_url)
 
   return (

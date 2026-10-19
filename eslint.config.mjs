@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored pdf.js worker, copied by scripts/copy-pdf-worker.mjs — not our code.
     "public/pdf.worker.min.mjs",
+    // drizzle-kit output (migrations + introspection snapshot)
+    "drizzle/**",
   ]),
 ]);
 

@@ -1,19 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
+import { and, desc, eq } from 'drizzle-orm'
+import { db, invoices, business_settings, invoice_line_items, projects as projectsTable } from '@/db'
+import { requireUserPage } from '@/lib/session'
+import type { ComponentProps } from 'react'
+import type { BusinessSettings } from '@/types'
 import { redirect } from 'next/navigation'
 import { InvoiceForm } from '@/components/invoices/InvoiceForm'
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
 
-  const { data: invoice } = await supabase
-    .from('invoices')
-    .select('*, invoice_line_items(*), projects(*, clients(*))')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+  const invoice = await db.query.invoices.findFirst({
+    where: and(eq(invoices.id, id), eq(invoices.user_id, user.id)),
+    with: { invoice_line_items: { orderBy: invoice_line_items.sort_order }, projects: { with: { clients: true } } },
+  })
 
   if (!invoice) redirect('/invoices')
 
@@ -22,17 +22,13 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   // use "Separate" on the detail page to split them back into editable drafts.
   if (invoice.project_id === null) redirect(`/invoices/${id}`)
 
-  const { data: bizSettings } = await supabase
-    .from('business_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  const bizSettings = (await db.query.business_settings.findFirst({ where: eq(business_settings.user_id, user.id) })) ?? null
 
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('*, clients(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+  const projects = await db.query.projects.findMany({
+    where: eq(projectsTable.user_id, user.id),
+    with: { clients: true },
+    orderBy: desc(projectsTable.created_at),
+  })
 
   const project = (invoice as any).projects
 
@@ -47,8 +43,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         </p>
       </div>
       <InvoiceForm
-        projects={projects ?? []}
-        bizSettings={bizSettings}
+        projects={projects as unknown as ComponentProps<typeof InvoiceForm>['projects']}
+        bizSettings={bizSettings as BusinessSettings | null}
         invoice={invoice as any}
         editMode={true}
       />

@@ -1,18 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { eq } from 'drizzle-orm'
+import { db, business_settings } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import { SettingsForm } from './SettingsForm'
 import { resolveLogoUrl } from '@/lib/storage'
+import type { BusinessSettings } from '@/types'
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: settings } = await supabase
-    .from('business_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  const user = await requireUserPage()
+  const settings = (await db.query.business_settings.findFirst({ where: eq(business_settings.user_id, user.id) })) ?? null
 
   return (
     <div>
@@ -20,7 +15,7 @@ export default async function SettingsPage() {
         <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Settings</h1>
         <p className="text-gray-500 text-sm mt-0.5">Business details used on invoices</p>
       </div>
-      <SettingsForm settings={settings ? { ...settings, logo_url: await resolveLogoUrl(settings.logo_url) } : settings} />
+      <SettingsForm settings={settings ? ({ ...settings, logo_url: await resolveLogoUrl(settings.logo_url) } as BusinessSettings) : null} />
     </div>
   )
 }

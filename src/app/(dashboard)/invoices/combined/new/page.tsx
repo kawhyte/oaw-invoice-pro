@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { and, desc, eq, inArray } from 'drizzle-orm'
+import { db, clients, projects as projectsTable, invoices as invoicesTable, business_settings, invoice_line_items } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CombinedInvoiceForm } from '@/components/invoices/CombinedInvoiceForm'
@@ -23,24 +25,17 @@ export default async function NewCombinedInvoicePage({
   const { clientId } = await searchParams
   if (!clientId) notFound()
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('id, name, currency')
-    .eq('id', clientId)
-    .eq('user_id', user.id)
-    .single()
+  const client = await db.query.clients.findFirst({
+    columns: { id: true, name: true, currency: true },
+    where: and(eq(clients.id, clientId), eq(clients.user_id, user.id)),
+  })
   if (!client) notFound()
 
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('id, title')
-    .eq('user_id', user.id)
-    .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
+  const projects = await db.select({ id: projectsTable.id, title: projectsTable.title }).from(projectsTable)
+    .where(and(eq(projectsTable.user_id, user.id), eq(projectsTable.client_id, clientId)))
+    .orderBy(desc(projectsTable.created_at))
 
   if (!projects || projects.length < 2) {
     // Combining needs at least two projects — send the user back to the client.
@@ -48,17 +43,13 @@ export default async function NewCombinedInvoicePage({
   }
 
   const projectIds = projects.map(p => p.id)
-  const { data: invoices } = await supabase
-    .from('invoices')
-    .select('id, project_id, invoice_number, status, amount_paid, currency, invoice_line_items(description, quantity, unit_price, sort_order)')
-    .eq('user_id', user.id)
-    .in('project_id', projectIds)
+  const invoices = await db.query.invoices.findMany({
+    columns: { id: true, project_id: true, invoice_number: true, status: true, amount_paid: true, currency: true },
+    with: { invoice_line_items: { columns: { description: true, quantity: true, unit_price: true, sort_order: true }, orderBy: invoice_line_items.sort_order } },
+    where: and(eq(invoicesTable.user_id, user.id), inArray(invoicesTable.project_id, projectIds)),
+  })
 
-  const { data: bizSettings } = await supabase
-    .from('business_settings')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
+  const bizSettings = (await db.query.business_settings.findFirst({ where: eq(business_settings.user_id, user.id) })) ?? null
 
   // Group each project's draft (absorbable) and already-billed (informational) invoices.
   const byProject = (invoices ?? []) as RawInvoice[]

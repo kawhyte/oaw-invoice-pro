@@ -1,43 +1,23 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getSessionCookie } from 'better-auth/cookies'
 
-export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
+// Optimistic gate only: checks that a session cookie exists. The real check
+// (valid, unexpired session) runs in every page/action via lib/session.ts.
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
-
   const isPublic =
     pathname.startsWith('/login') ||
     pathname.startsWith('/share') ||
-    pathname.startsWith('/auth')
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/offline')
+  const hasSession = !!getSessionCookie(request)
 
-  if (!user && !isPublic) {
+  if (!hasSession && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-
-  if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  return supabaseResponse
+  // No "/login → /dashboard" redirect here: a stale cookie would loop with the
+  // dashboard's real check. The login page redirects itself when truly signed in.
+  return NextResponse.next()
 }
 
 export const config = {

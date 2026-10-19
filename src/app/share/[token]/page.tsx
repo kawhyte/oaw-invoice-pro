@@ -1,5 +1,6 @@
 import type { Viewport } from 'next'
-import { createServiceClient } from '@/lib/supabase/service'
+import { asc, desc, eq, and, inArray } from 'drizzle-orm'
+import { db, projects, project_notes, project_files, project_deliverables, invoices as invoicesTable } from '@/db'
 import { signedGetUrl } from '@/lib/storage'
 import { notFound } from 'next/navigation'
 import { StatusChip } from '@/components/ui/StatusChip'
@@ -18,40 +19,46 @@ export const viewport: Viewport = {
 
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const service = createServiceClient()
+  // Public page: no session. Access is by the unguessable share token only.
+  // share_token is a uuid column — reject malformed tokens before querying.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) notFound()
 
-  const { data: project } = await service
-    .from('projects')
-    .select('*, clients(*)')
-    .eq('share_token', token)
-    .single()
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.share_token, token),
+    with: { clients: true },
+  })
 
   if (!project) notFound()
 
-  const [{ data: notes }, { data: files }, { data: invoices }] = await Promise.all([
-    service.from('project_notes').select('*').eq('project_id', project.id).order('created_at', { ascending: true }),
-    service.from('project_files').select('*').eq('project_id', project.id).eq('is_client_visible', true).order('uploaded_at', { ascending: false }),
-    service.from('invoices').select('*, invoice_payments(*)').eq('project_id', project.id).order('created_at', { ascending: false }),
+  const [notes, files, invoices] = await Promise.all([
+    db.select().from(project_notes).where(eq(project_notes.project_id, project.id)).orderBy(asc(project_notes.created_at)),
+    db.select().from(project_files)
+      .where(and(eq(project_files.project_id, project.id), eq(project_files.is_client_visible, true)))
+      .orderBy(desc(project_files.uploaded_at)),
+    db.query.invoices.findMany({
+      where: eq(invoicesTable.project_id, project.id),
+      with: { invoice_payments: true },
+      orderBy: desc(invoicesTable.created_at),
+    }),
   ])
 
   const filesWithUrls = await Promise.all(
-    (files ?? []).map(async (file: ProjectFile) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 86400) }))
+    (files as ProjectFile[]).map(async (file) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 86400) }))
   )
 
   // Drawings (payment-gated deliverables). Previews are always shown; the clean
   // original is only signed/exposed when its linked invoice is paid or it has
   // been released manually. Linked invoices are fetched by id so combined
   // invoices (project_id null) gate correctly too.
-  const { data: deliverables } = await service
-    .from('project_deliverables')
-    .select('*')
-    .eq('project_id', project.id)
-    .order('created_at', { ascending: false })
+  const deliverables = await db.select().from(project_deliverables)
+    .where(eq(project_deliverables.project_id, project.id))
+    .orderBy(desc(project_deliverables.created_at))
 
   const linkedInvoiceIds = [...new Set((deliverables ?? []).map((d: ProjectDeliverable) => d.linked_invoice_id).filter(Boolean))]
-  const { data: linkedInvoices } = linkedInvoiceIds.length
-    ? await service.from('invoices').select('id, status, total, amount_paid').in('id', linkedInvoiceIds as string[])
-    : { data: [] as any[] }
+  const linkedInvoices = linkedInvoiceIds.length
+    ? await db.select({ id: invoicesTable.id, status: invoicesTable.status, total: invoicesTable.total, amount_paid: invoicesTable.amount_paid })
+        .from(invoicesTable).where(inArray(invoicesTable.id, linkedInvoiceIds as string[]))
+    : []
   const linkedInvoiceById = new Map((linkedInvoices ?? []).map((i: any) => [i.id, i]))
 
   const signUrl = (path: string) => signedGetUrl(path, 86400)

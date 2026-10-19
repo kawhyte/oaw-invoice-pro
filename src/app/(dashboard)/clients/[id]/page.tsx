@@ -1,5 +1,7 @@
-import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
+import { and, desc, eq, inArray, or } from 'drizzle-orm'
+import { notFound } from 'next/navigation'
+import { db, clients, projects as projectsTable, invoices as invoicesTable, invoice_line_items } from '@/db'
+import { requireUserPage } from '@/lib/session'
 import Link from 'next/link'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { EditClientButton } from '@/components/clients/EditClientButton'
@@ -10,38 +12,30 @@ const fmtMoney = (n: number, currency: string) =>
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const user = await requireUserPage()
 
-  const { data: client } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+  const client = await db.query.clients.findFirst({ where: and(eq(clients.id, id), eq(clients.user_id, user.id)) })
 
   if (!client) notFound()
 
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('id, title, status, location_address')
-    .eq('user_id', user.id)
-    .eq('client_id', id)
-    .order('created_at', { ascending: false })
+  const projects = await db.select({
+    id: projectsTable.id, title: projectsTable.title, status: projectsTable.status, location_address: projectsTable.location_address,
+  }).from(projectsTable)
+    .where(and(eq(projectsTable.user_id, user.id), eq(projectsTable.client_id, id)))
+    .orderBy(desc(projectsTable.created_at))
 
-  const projectIds = (projects ?? []).map(p => p.id)
+  const projectIds = projects.map(p => p.id)
 
   // Invoices for this client: single-project ones (by project_id) + combined ones (by client_id).
-  const orFilter = projectIds.length
-    ? `client_id.eq.${id},project_id.in.(${projectIds.join(',')})`
-    : `client_id.eq.${id}`
-  const { data: invoices } = await supabase
-    .from('invoices')
-    .select('id, invoice_number, status, total, amount_paid, currency, created_at, project_id, invoice_line_items(section_title)')
-    .eq('user_id', user.id)
-    .or(orFilter)
-    .order('created_at', { ascending: false })
+  const invoices = await db.query.invoices.findMany({
+    columns: { id: true, invoice_number: true, status: true, total: true, amount_paid: true, currency: true, created_at: true, project_id: true },
+    with: { invoice_line_items: { columns: { section_title: true }, orderBy: invoice_line_items.sort_order } },
+    where: and(
+      eq(invoicesTable.user_id, user.id),
+      projectIds.length ? or(eq(invoicesTable.client_id, id), inArray(invoicesTable.project_id, projectIds)) : eq(invoicesTable.client_id, id),
+    ),
+    orderBy: desc(invoicesTable.created_at),
+  })
 
   const c = client as Client
   const contactBits = [c.company, c.email, c.phone, c.country].filter(Boolean) as string[]
