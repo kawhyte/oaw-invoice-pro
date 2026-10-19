@@ -32,22 +32,25 @@ export function RecentInvoices({ invoices }: { invoices: InvoiceRow[] }) {
         <div className="divide-y divide-gray-100">
           {invoices.map(inv => (
             <Link key={inv.id} href={`/invoices/${inv.id}`}
-              className="flex items-center justify-between px-6 py-4 hover:bg-[#f8f9fa] transition-colors">
-              <div>
+              className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 hover:bg-[#f8f9fa] transition-colors">
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-[#1a1c1e] flex items-center gap-2">
                   {inv.invoice_number}
                   {inv.project_id === null && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#f5ede4] border border-[#715a3e]/20 text-[#715a3e] font-medium">Combined</span>
                   )}
                 </p>
-                <p className="text-xs text-[#8a8c94] mt-0.5">
+                <p className="text-xs text-[#8a8c94] mt-0.5 truncate">
                   {inv.projects?.clients?.name ?? inv.clients?.name ?? '—'} · {new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <p className="text-sm font-medium text-[#1a1c1e] data-mono">{fmt(inv.total, inv.currency)}</p>
-                <StatusChip status={inv.status} />
-                <QuickPayButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} total={inv.total} amountPaid={inv.amount_paid} currency={inv.currency} />
+              {/* Phones: amount on top, chip + Mark paid underneath, so a long JMD amount never pushes the button out of the card. */}
+              <div className="flex flex-col items-end gap-1.5 shrink-0 sm:flex-row sm:items-center sm:gap-3">
+                <p className="text-sm font-medium text-[#1a1c1e] data-mono whitespace-nowrap">{fmt(inv.total, inv.currency)}</p>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <StatusChip status={inv.status} />
+                  <QuickPayButton invoiceId={inv.id} invoiceNumber={inv.invoice_number} total={inv.total} amountPaid={inv.amount_paid} currency={inv.currency} />
+                </div>
               </div>
             </Link>
           ))}

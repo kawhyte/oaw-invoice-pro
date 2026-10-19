@@ -26,17 +26,18 @@ export function BudgetTracker({ budget, tasks }: Props) {
         <h2 className="label-caps">Budget</h2>
       </div>
       <div className="p-6 space-y-4">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="label-caps mb-1">Budget</p>
+        {/* Phones: one label/amount row each — three JMD amounts side by side don't fit. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
+          <div className="flex items-baseline justify-between gap-3 sm:block">
+            <p className="label-caps sm:mb-1">Budget</p>
             <p className="text-lg font-semibold text-[#1a1c1e] data-mono">{hasBudget ? fmt(budget as number) : '—'}</p>
           </div>
-          <div>
-            <p className="label-caps mb-1">Spent</p>
+          <div className="flex items-baseline justify-between gap-3 sm:block">
+            <p className="label-caps sm:mb-1">Spent</p>
             <p className="text-lg font-semibold text-[#1a1c1e] data-mono">{fmt(spent)}</p>
           </div>
-          <div>
-            <p className="label-caps mb-1">{over ? 'Over by' : 'Remaining'}</p>
+          <div className="flex items-baseline justify-between gap-3 sm:block">
+            <p className="label-caps sm:mb-1">{over ? 'Over by' : 'Remaining'}</p>
             <p className={`text-lg font-semibold data-mono ${over ? 'text-red-600' : 'text-[#2a5130]'}`}>
               {hasBudget ? fmt(Math.abs(remaining)) : '—'}
             </p>

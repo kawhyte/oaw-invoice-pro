@@ -79,7 +79,7 @@ export function FinancialChartInner({ stats }: { stats: CurrencyStats[] }) {
           const paidPct = total > 0 ? Math.round((s.paid / total) * 100) : 0
           const owingPct = 100 - paidPct
           return (
-            <div key={s.currency} className="flex gap-6">
+            <div key={s.currency} className="flex flex-wrap gap-x-6 gap-y-2">
               <div>
                 <p className="label-caps">Paid</p>
                 <p className="data-mono text-sm text-[#1a1c1e]">
