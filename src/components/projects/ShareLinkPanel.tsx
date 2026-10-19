@@ -4,10 +4,11 @@ import { CheckCircle2, Circle } from 'lucide-react'
 import { rotateShareTokenAction, toggleFinancialsAction } from '@/app/(dashboard)/projects/[id]/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
+import { shareLink, whatsAppUrl } from '@/lib/share'
 
-interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; deliverableCount: number; noteCount: number; invoiceCount: number }
+interface Props { projectId: string; shareToken: string; showFinancials: boolean; fileCount: number; deliverableCount: number; noteCount: number; invoiceCount: number; projectTitle: string; clientName: string | null; clientPhone: string | null }
 
-export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, deliverableCount, noteCount, invoiceCount }: Props) {
+export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCount, deliverableCount, noteCount, invoiceCount, projectTitle, clientName, clientPhone }: Props) {
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
   const confirm = useConfirm()
@@ -19,6 +20,12 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
     navigator.clipboard.writeText(shareUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const message = `Hi${clientName ? ` ${clientName}` : ''}, here is the link to your project "${projectTitle}" — drawings, documents and updates: ${shareUrl}`
+  async function handleShare() {
+    const r = await shareLink(shareUrl, projectTitle, message)
+    if (r === 'copied') { setCopied(true); setTimeout(() => setCopied(false), 2000) }
   }
 
   async function handleRotate() {
@@ -91,13 +98,23 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
               : <span className="text-sm text-gray-400">Off — toggle below to enable</span>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <input readOnly value={shareUrl}
-            className="flex-1 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#5a5c62] bg-[#f8f9fa] focus:outline-none" />
-          <button onClick={handleCopy}
-            className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors shrink-0">
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
+            className="flex-1 min-w-0 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#5a5c62] bg-[#f8f9fa] focus:outline-none" />
+          <div className="flex gap-2">
+            <button onClick={handleCopy}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors shrink-0">
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+            <button onClick={handleShare}
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors shrink-0">
+              Share
+            </button>
+            <a href={whatsAppUrl(message, clientPhone)} target="_blank" rel="noopener noreferrer"
+              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors shrink-0">
+              WhatsApp
+            </a>
+          </div>
         </div>
         <div className="flex items-center justify-between">
           <button onClick={handleRotate} disabled={isPending}

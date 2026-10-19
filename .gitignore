@@ -49,3 +49,13 @@ supabase/local/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android TWA (Bubblewrap) — never commit the signing key or builds
+android/*.keystore
+android/*.apk
+android/*.aab
+android/*.idsig
+android/app/build/
+android/.gradle/
+android/build/
+android/keystore-password.txt

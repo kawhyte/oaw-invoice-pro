@@ -14,7 +14,7 @@ import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
 import { isFinalUnlocked } from '@/lib/deliverables'
-import type { ProjectFile, ProjectDeliverable } from '@/types'
+import type { Client, ProjectFile, ProjectDeliverable } from '@/types'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -228,7 +228,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
       <ProjectNotes projectId={id} notes={notes ?? []} showClientBadge={!project.is_personal} />
       {!project.is_personal && (
-        <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.filter(f => f.is_client_visible).length} deliverableCount={deliverables?.length ?? 0} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} />
+        <ShareLinkPanel projectId={id} shareToken={project.share_token} showFinancials={project.show_financials_on_share} fileCount={filesWithUrls.filter(f => f.is_client_visible).length} deliverableCount={deliverables?.length ?? 0} noteCount={notes?.length ?? 0} invoiceCount={invoices?.length ?? 0} projectTitle={project.title} clientName={(project.clients as Pick<Client, 'name' | 'phone'> | null)?.name ?? null} clientPhone={(project.clients as Pick<Client, 'name' | 'phone'> | null)?.phone ?? null} />
       )}
     </div>
   )

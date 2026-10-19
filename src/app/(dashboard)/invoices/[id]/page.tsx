@@ -16,7 +16,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   const { data: invoice } = await supabase
     .from('invoices')
-    .select('*, projects(id, title, job_type, location_address, clients(id, name, email)), clients(id, name, email), invoice_line_items(*)')
+    .select('*, projects(id, title, job_type, location_address, clients(id, name, email, phone)), clients(id, name, email, phone), invoice_line_items(*)')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -116,7 +116,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           {isCombined && invoice.status === 'draft' && (
             <SeparateInvoiceButton invoiceId={id} projectCount={sections.length} />
           )}
-          <InvoiceActions invoiceId={id} invoiceNumber={invoice.invoice_number} clientEmail={client?.email ?? null} status={invoice.status} saveTargets={saveTargets} savedFile={savedFile} />
+          <InvoiceActions invoiceId={id} invoiceNumber={invoice.invoice_number} clientEmail={client?.email ?? null} clientName={client?.name ?? null} clientPhone={client?.phone ?? null} status={invoice.status} saveTargets={saveTargets} savedFile={savedFile} />
         </div>
       </div>
 

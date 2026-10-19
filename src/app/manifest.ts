@@ -6,12 +6,15 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'OW Studio',
     description: 'Professional invoice and project management for contractors',
     start_url: '/dashboard',
+    id: '/dashboard',
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#1a1c1e',
-    orientation: 'portrait',
+    // 'any' so drawings can be viewed in landscape.
+    orientation: 'any',
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }

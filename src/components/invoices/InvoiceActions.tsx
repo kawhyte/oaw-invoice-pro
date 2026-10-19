@@ -2,10 +2,11 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { X, Check } from 'lucide-react'
+import { X, Check, Share2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { deleteInvoiceAction, markSentAction, uploadInvoicePdfAction } from '@/app/(dashboard)/invoices/actions'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
+import { canShareFiles, shareFile } from '@/lib/share'
 
 const InvoicePDFPreview = dynamic(
   () => import('./InvoicePDFPreview').then(m => m.InvoicePDFPreview),
@@ -16,12 +17,14 @@ interface Props {
   invoiceId: string
   invoiceNumber: string
   clientEmail: string | null
+  clientName: string | null
+  clientPhone: string | null
   status: string
   saveTargets: { id: string; title: string }[]
   savedFile: { id: string; projectId: string } | null
 }
 
-export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, saveTargets, savedFile }: Props) {
+export function InvoiceActions({ invoiceId, invoiceNumber, clientName, status, saveTargets, savedFile }: Props) {
   const router = useRouter()
   // Email feature — paused for future sprint (see button comment below)
   // const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
@@ -34,6 +37,38 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, 
   const [isSaving, startSaving] = useTransition()
   const [saveState, setSaveState] = useState<'idle' | 'success' | 'error'>('idle')
   const toast = useToast()
+
+  // ---- Share PDF (Android share sheet → WhatsApp, Gmail, …) ----
+  // The PDF is generated server-side first; if that outlasts the tap's user
+  // activation, navigator.share rejects with NotAllowedError, so we keep the
+  // file and ask for a second tap that shares instantly.
+  const [shareFileReady, setShareFileReady] = useState<File | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const shareText = `Hi${clientName ? ` ${clientName}` : ''}, please find invoice ${invoiceNumber} attached.`
+
+  async function handleSharePdf() {
+    if (!canShareFiles()) { window.open(`/api/invoice/${invoiceId}/pdf`, '_blank'); return }
+    setSharing(true)
+    try {
+      let file = shareFileReady
+      if (!file) {
+        const res = await fetch(`/api/invoice/${invoiceId}/pdf`)
+        if (!res.ok) throw new Error('Could not generate the PDF.')
+        file = new File([await res.blob()], `${invoiceNumber}.pdf`, { type: 'application/pdf' })
+      }
+      const result = await shareFile(file, `Invoice ${invoiceNumber}`, shareText)
+      if (result === 'needs-gesture') { setShareFileReady(file); toast.success('PDF ready — tap Share now.'); return }
+      setShareFileReady(null)
+      if (result === 'shared' && status === 'draft') {
+        startTransition(async () => { try { await markSentAction(invoiceId) } catch {} })
+      }
+    } catch (err) {
+      toast.error(toErrorMessage(err))
+    } finally {
+      setSharing(false)
+    }
+  }
+
   const [selectedProjectId, setSelectedProjectId] = useState(
     savedFile?.projectId ?? saveTargets[0]?.id ?? ''
   )
@@ -109,6 +144,10 @@ export function InvoiceActions({ invoiceId, invoiceNumber, clientEmail, status, 
           className="px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] transition-colors">
           Download PDF
         </a>
+        <button onClick={handleSharePdf} disabled={sharing}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 transition-colors">
+          <Share2 size={14} /> {sharing ? 'Preparing…' : shareFileReady ? 'Share now' : 'Share PDF'}
+        </button>
         {canSave && (
           <button
             onClick={openPreview}
