@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SettingsForm } from './SettingsForm'
+import { resolveLogoUrl } from '@/lib/storage'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -19,7 +20,7 @@ export default async function SettingsPage() {
         <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Settings</h1>
         <p className="text-gray-500 text-sm mt-0.5">Business details used on invoices</p>
       </div>
-      <SettingsForm settings={settings} />
+      <SettingsForm settings={settings ? { ...settings, logo_url: await resolveLogoUrl(settings.logo_url) } : settings} />
     </div>
   )
 }

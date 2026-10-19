@@ -184,7 +184,7 @@ export function InvoiceDocument({ invoice, bizSettings }: Props) {
           <Text style={S.hTitle}>INVOICE</Text>
           <View style={S.hRight}>
             {bizSettings?.logo_url
-              ? <Image src={bizSettings.logo_url.split('?')[0]} style={S.hLogo} />
+              ? <Image src={bizSettings.logo_url} style={S.hLogo} />
               : <Text style={S.hBiz}>{bizSettings?.business_name ?? 'OW Studio'}</Text>
             }
             {bizSettings?.logo_url && bizSettings?.business_name && (

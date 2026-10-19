@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import { signedGetUrl } from '@/lib/storage'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ProjectNotes } from '@/components/projects/ProjectNotes'
@@ -52,12 +52,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     : { data: [] }
   const allInvoices = [...(invoices ?? []), ...(combinedInvoices ?? [])]
 
-  const service = createServiceClient()
   const filesWithUrls = await Promise.all(
-    (files ?? []).map(async (file: ProjectFile) => {
-      const { data } = await service.storage.from('project-files').createSignedUrl(file.storage_path, 3600)
-      return { ...file, signedUrl: data?.signedUrl ?? '' }
-    })
+    (files ?? []).map(async (file: ProjectFile) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 3600) }))
   )
 
   // Resolve each deliverable's lock state against its linked invoice.

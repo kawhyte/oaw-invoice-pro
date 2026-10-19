@@ -1,14 +1,13 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { MAX_UPLOAD_BYTES } from '@/lib/uploadLimits'
+import { signedPutUrl, removeObjects } from '@/lib/storage'
 import { revalidatePath } from 'next/cache'
 
-// Defense-in-depth for direct-to-storage uploads: the browser uploads the file
-// straight to Supabase Storage, so the file bytes never pass through here — only
-// the metadata does. Storage RLS already restricts writes to the user's own
-// <user_id>/ folder; these checks add type/size/namespace sanity on top so the
-// bucket's client-declared limits can't be leveraged to write junk DB rows.
+// Uploads go browser → object storage through presigned PUT URLs that only
+// these actions issue (key chosen here, Content-Type + Content-Length signed).
+// The file bytes never pass through the server; the save actions below re-check
+// the namespace/type/size so a client can't register someone else's object.
 function assertOwnedUploadPath(userId: string, projectId: string, path: string, ext: RegExp) {
   if (!path.startsWith(`${userId}/${projectId}/`)) throw new Error('Invalid storage path')
   if (!ext.test(path)) throw new Error('Unexpected file type')
@@ -17,6 +16,51 @@ function assertUploadSize(sizeBytes: number | null) {
   if (sizeBytes != null && (sizeBytes <= 0 || sizeBytes > MAX_UPLOAD_BYTES)) {
     throw new Error('File exceeds the maximum allowed size')
   }
+}
+
+/** Approves one PDF upload and returns where to PUT it. */
+export async function createFileUploadAction(projectId: string, fileName: string, sizeBytes: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  const { data: project } = await supabase.from('projects').select('id').eq('id', projectId).eq('user_id', user.id).single()
+  if (!project) throw new Error('Not found')
+  assertUploadSize(sizeBytes)
+  const safeName = fileName.replace(/[^\w.\- ]+/g, '_').replace(/\.pdf$/i, '') + '.pdf'
+  const storagePath = `${user.id}/${projectId}/${Date.now()}-${safeName}`
+  const url = await signedPutUrl(storagePath, 'application/pdf', sizeBytes)
+  return { storagePath, url }
+}
+
+/** Approves a drawing upload: the original PDF + one preview and one zoom JPEG per page. */
+export async function createDeliverableUploadAction(
+  projectId: string,
+  originalSize: number,
+  pages: { previewSize: number; zoomSize: number }[],
+) {
+  const supabase = await assertProjectOwner(projectId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+  assertUploadSize(originalSize)
+  if (pages.length === 0 || pages.length > 200) throw new Error('Unexpected page count')
+  const JPEG_MAX = 15 * 1024 * 1024
+  for (const p of pages) {
+    if (p.previewSize <= 0 || p.previewSize > JPEG_MAX || p.zoomSize <= 0 || p.zoomSize > JPEG_MAX) {
+      throw new Error('Preview image too large')
+    }
+  }
+  const base = `${user.id}/${projectId}/deliverables/${crypto.randomUUID()}`
+  const originalPath = `${base}/original.pdf`
+  const original = { path: originalPath, url: await signedPutUrl(originalPath, 'application/pdf', originalSize) }
+  const pageUrls = await Promise.all(pages.map(async (p, i) => {
+    const previewPath = `${base}/page-${i + 1}.jpg`
+    const zoomPath = `${base}/page-${i + 1}@zoom.jpg`
+    return {
+      previewPath, previewUrl: await signedPutUrl(previewPath, 'image/jpeg', p.previewSize),
+      zoomPath, zoomUrl: await signedPutUrl(zoomPath, 'image/jpeg', p.zoomSize),
+    }
+  }))
+  return { original, pages: pageUrls }
 }
 
 export async function addNoteAction(projectId: string, content: string) {
@@ -123,7 +167,12 @@ export async function saveFileMetaAction(projectId: string, name: string, storag
   if (!project) throw new Error('Not found')
   assertOwnedUploadPath(user.id, projectId, storagePath, /\.pdf$/i)
   assertUploadSize(sizeBytes)
-  await supabase.from('project_files').insert({ project_id: projectId, name, storage_path: storagePath, size_bytes: sizeBytes })
+  const { error } = await supabase.from('project_files').insert({ project_id: projectId, name, storage_path: storagePath, size_bytes: sizeBytes })
+  if (error) {
+    // Don't leave an orphaned object eating the free storage allowance.
+    await removeObjects([storagePath]).catch(() => {})
+    throw new Error('The file uploaded but could not be saved to the project. Please try again.')
+  }
   revalidatePath(`/projects/${projectId}`)
 }
 
@@ -160,8 +209,7 @@ export async function deleteFileAction(fileId: string, projectId: string) {
   if (!file || (file.projects as unknown as { user_id: string })?.user_id !== user.id) {
     throw new Error('Not found')
   }
-  const service = createServiceClient()
-  await service.storage.from('project-files').remove([file.storage_path])
+  await removeObjects([file.storage_path])
   await supabase.from('project_files').delete().eq('id', fileId)
   revalidatePath(`/projects/${projectId}`)
 }
@@ -188,7 +236,7 @@ export async function saveDeliverableAction(
   for (const p of [...fields.previewPaths, ...fields.zoomPaths]) {
     assertOwnedUploadPath(user.id, projectId, p, /\.jpg$/i)
   }
-  await supabase.from('project_deliverables').insert({
+  const { error } = await supabase.from('project_deliverables').insert({
     project_id: projectId,
     name: fields.name,
     storage_path: fields.storagePath,
@@ -198,6 +246,11 @@ export async function saveDeliverableAction(
     size_bytes: fields.sizeBytes,
     linked_invoice_id: fields.linkedInvoiceId,
   })
+  if (error) {
+    // Don't leave the original + preview/zoom JPEGs orphaned in storage.
+    await removeObjects([fields.storagePath, ...fields.previewPaths, ...fields.zoomPaths]).catch(() => {})
+    throw new Error('The drawing uploaded but could not be saved to the project. Please try again.')
+  }
   revalidatePath(`/projects/${projectId}`)
 }
 
@@ -247,8 +300,7 @@ export async function deleteDeliverableAction(deliverableId: string, projectId: 
     ...asPaths(deliverable.zoom_paths),
   ].filter(Boolean)
 
-  const service = createServiceClient()
-  if (paths.length) await service.storage.from('project-files').remove(paths)
+  await removeObjects(paths)
   await supabase.from('project_deliverables').delete().eq('id', deliverableId).eq('project_id', projectId)
   revalidatePath(`/projects/${projectId}`)
 }

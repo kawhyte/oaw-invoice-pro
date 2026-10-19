@@ -1,8 +1,8 @@
 'use client'
 import { useRef, useState, useTransition } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { renderWatermarkedPreviews } from '@/lib/pdfPreview'
-import { saveDeliverableAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { createDeliverableUploadAction, saveDeliverableAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { uploadToUrl } from '@/lib/uploadToUrl'
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, looksLikePdf } from '@/lib/uploadLimits'
 
 interface InvoiceOption { id: string; invoice_number: string; status: string }
@@ -13,7 +13,7 @@ interface Props {
   watermarkText: string
 }
 
-export function DeliverableUpload({ projectId, userId, invoices, watermarkText }: Props) {
+export function DeliverableUpload({ projectId, invoices, watermarkText }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
@@ -45,10 +45,6 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
     setError(null)
     setBusy(true)
     try {
-      const supabase = createClient()
-      const id = crypto.randomUUID()
-      const base = `${userId}/${projectId}/deliverables/${id}`
-
       // 1. Rasterize watermarked previews (inline + on-demand zoom) on this device.
       setProgress('Preparing preview…')
       const { previews, zooms } = await renderWatermarkedPreviews(file, {
@@ -56,35 +52,26 @@ export function DeliverableUpload({ projectId, userId, invoices, watermarkText }
         onProgress: (done, total) => setProgress(`Preparing preview ${done}/${total}…`),
       })
 
-      // 2. Upload the original print-ready PDF (stays gated).
+      // 2. Get signed upload URLs (keys chosen + sizes signed server-side), then upload
+      //    the original print-ready PDF (stays gated) and each page's preview + zoom.
       setProgress('Uploading original…')
-      const originalPath = `${base}/original.pdf`
-      const { error: origErr } = await supabase.storage
-        .from('project-files')
-        .upload(originalPath, file, { contentType: 'application/pdf' })
-      if (origErr) throw origErr
-
-      // 3. Upload each preview page + its high-res zoom companion.
+      const plan = await createDeliverableUploadAction(
+        projectId, file.size, previews.map((p, i) => ({ previewSize: p.size, zoomSize: zooms[i].size })),
+      )
+      await uploadToUrl(plan.original.url, file, 'application/pdf')
+      const originalPath = plan.original.path
       const previewPaths: string[] = []
       const zoomPaths: string[] = []
-      for (let i = 0; i < previews.length; i++) {
-        setProgress(`Uploading page ${i + 1}/${previews.length}…`)
-        const previewPath = `${base}/page-${i + 1}.jpg`
-        const { error: pErr } = await supabase.storage
-          .from('project-files')
-          .upload(previewPath, previews[i], { contentType: 'image/jpeg' })
-        if (pErr) throw pErr
-        previewPaths.push(previewPath)
-
-        const zoomPath = `${base}/page-${i + 1}@zoom.jpg`
-        const { error: zErr } = await supabase.storage
-          .from('project-files')
-          .upload(zoomPath, zooms[i], { contentType: 'image/jpeg' })
-        if (zErr) throw zErr
-        zoomPaths.push(zoomPath)
+      for (let i = 0; i < plan.pages.length; i++) {
+        setProgress(`Uploading page ${i + 1}/${plan.pages.length}…`)
+        const pg = plan.pages[i]
+        await uploadToUrl(pg.previewUrl, previews[i], 'image/jpeg')
+        previewPaths.push(pg.previewPath)
+        await uploadToUrl(pg.zoomUrl, zooms[i], 'image/jpeg')
+        zoomPaths.push(pg.zoomPath)
       }
 
-      // 4. Save metadata.
+      // 3. Save metadata.
       setProgress('Saving…')
       const sizeBytes = file.size
       startTransition(async () => {

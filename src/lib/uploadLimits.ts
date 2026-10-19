@@ -1,13 +1,12 @@
 // Shared upload limits, used by both the client upload components (friendly
-// pre-checks) and the server actions (authoritative validation). Keep in sync
-// with the project-files bucket limits in
-// supabase/migrations/0009_storage_bucket_limits.sql.
+// pre-checks) and the server actions (authoritative validation, which also signs
+// the exact Content-Length into each upload URL).
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024 // 100 MB
 export const MAX_UPLOAD_LABEL = '100 MB'
 
-// Supabase Free plan caps total file storage at 1 GB (shared across all
-// buckets). Drives the Dashboard storage meter.
-export const FREE_STORAGE_BYTES = 1024 ** 3 // 1 GB
+// Backblaze B2 free tier: 10 GB stored (enforced by $0 caps — uploads are
+// refused past it, never billed). Drives the Dashboard storage meter.
+export const FREE_STORAGE_BYTES = 10 * 1024 ** 3 // 10 GB
 
 // GB-scale formatter for the storage meter (the MB-scale formatBytes in
 // FileList.tsx is for individual files).

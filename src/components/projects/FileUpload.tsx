@@ -1,12 +1,13 @@
 'use client'
 import { useRef, useState, useTransition } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { saveFileMetaAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { createFileUploadAction, saveFileMetaAction } from '@/app/(dashboard)/projects/[id]/actions'
+import { uploadToUrl } from '@/lib/uploadToUrl'
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, looksLikePdf } from '@/lib/uploadLimits'
 
 interface Props { projectId: string; userId: string }
 
-export function FileUpload({ projectId, userId }: Props) {
+// userId stays in Props for callers; the storage key is now chosen server-side.
+export function FileUpload({ projectId }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,10 +23,8 @@ export function FileUpload({ projectId, userId }: Props) {
     setError(null)
     setUploading(true)
     try {
-      const supabase = createClient()
-      const storagePath = `${userId}/${projectId}/${Date.now()}-${file.name}`
-      const { error: uploadError } = await supabase.storage.from('project-files').upload(storagePath, file)
-      if (uploadError) throw uploadError
+      const { storagePath, url } = await createFileUploadAction(projectId, file.name, file.size)
+      await uploadToUrl(url, file, 'application/pdf')
       startTransition(async () => {
         try {
           await saveFileMetaAction(projectId, file.name, storagePath, file.size)

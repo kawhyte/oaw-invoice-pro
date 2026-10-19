@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import { totalBytes } from '@/lib/storage'
 import { redirect } from 'next/navigation'
 import { StatsCards } from '@/components/dashboard/StatsCards'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
@@ -27,9 +27,9 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(5),
     supabase.from('business_settings').select('max_workload').eq('user_id', user.id).single(),
-    // Real bytes stored across all buckets (service-role RPC, server-only).
-    // Coalesce to 0 so the dashboard renders even before 0010 is applied.
-    createServiceClient().rpc('storage_usage'),
+    // Real bytes stored in the bucket (one list call per 1000 objects).
+    // Falls back to 0 so the dashboard still renders if storage is unreachable.
+    totalBytes().then((n) => ({ data: n })).catch(() => ({ data: 0 })),
   ])
 
   // Current workload = summed difficulty of active projects vs his ceiling.

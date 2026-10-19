@@ -33,7 +33,7 @@ export function NavDropdown({ logoUrl, businessName, align = 'up' }: Props) {
       >
         {logoUrl ? (
           <img
-            src={logoUrl.split('?')[0]}
+            src={logoUrl}
             alt="Logo"
             className="h-7 w-7 rounded-md object-contain bg-white ring-2 ring-white p-0.5"
           />

@@ -4,7 +4,7 @@ import { formatGB } from '@/lib/uploadLimits'
 interface Props { usedBytes: number; limitBytes: number }
 
 /**
- * Free-plan storage meter. Shows total Supabase Storage used against the 1 GB
+ * Free-plan storage meter. Shows total B2 storage used against the 10 GB
  * cap so the owner stays under it. Compact card matched to WorkloadCard's
  * compact variant (paired side-by-side on the Dashboard): turns amber near full
  * (>=80%) and red when over. Explanatory text only appears when near/over —

@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createClient } from '@/lib/supabase/server'
 import { InvoiceDocument } from '@/components/invoices/InvoiceDocument'
+import { resolveLogoUrl } from '@/lib/storage'
 import React from 'react'
 
 export const runtime = 'nodejs'
@@ -50,8 +51,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const client = (invoice.projects as any)?.clients ?? (invoice.clients as any)
   if (!client?.email) return Response.json({ error: 'Client has no email address' }, { status: 400 })
 
+  const biz = bizSettings ? { ...bizSettings, logo_url: await resolveLogoUrl(bizSettings.logo_url) } : null
   const buffer = await renderToBuffer(
-    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null }) as any
+    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: biz }) as any
   )
 
   const fmt = (n: number, c: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency: c }).format(n)

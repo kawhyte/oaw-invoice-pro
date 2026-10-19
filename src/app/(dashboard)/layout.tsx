@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { resolveLogoUrl } from '@/lib/storage'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { NavLinks } from '@/components/NavLinks'
@@ -17,6 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .select('business_name, logo_url')
     .eq('user_id', user.id)
     .single()
+  const logoUrl = await resolveLogoUrl(bizSettings?.logo_url)
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex">
@@ -32,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </nav>
         <div className="px-3 py-4 border-t border-white/10">
           <NavDropdown
-            logoUrl={bizSettings?.logo_url ?? null}
+            logoUrl={logoUrl}
             businessName={bizSettings?.business_name ?? null}
           />
         </div>
@@ -48,7 +50,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             OW Studio
           </Link>
           <NavDropdown
-            logoUrl={bizSettings?.logo_url ?? null}
+            logoUrl={logoUrl}
             businessName={bizSettings?.business_name ?? null}
             align="down"
           />

@@ -1,6 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
+import { putObject, removeObjects } from '@/lib/storage'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { DiscountType } from '@/types'
@@ -23,8 +23,7 @@ async function cleanupSavedInvoicePdfs(supabase: SupabaseServer, invoiceIds: str
     .select('id, storage_path')
     .in('invoice_id', invoiceIds)
   if (!files || files.length === 0) return
-  const service = createServiceClient()
-  await service.storage.from('project-files').remove(files.map(f => f.storage_path))
+  await removeObjects(files.map(f => f.storage_path))
   await supabase.from('project_files').delete().in('id', files.map(f => f.id))
 }
 
@@ -282,12 +281,8 @@ export async function uploadInvoicePdfAction(invoiceId: string, projectId: strin
   // Replace any previously saved copy (storage object + row) for this invoice.
   await cleanupSavedInvoicePdfs(supabase, [invoiceId])
 
-  const service = createServiceClient()
   const storagePath = `${user.id}/${projectId}/${Date.now()}-${invoice.invoice_number}.pdf`
-  const { error: uploadError } = await service.storage
-    .from('project-files')
-    .upload(storagePath, result.buffer, { contentType: 'application/pdf', upsert: false })
-  if (uploadError) throw new Error('Upload failed')
+  await putObject(storagePath, result.buffer, 'application/pdf')
 
   await supabase.from('project_files').insert({
     project_id: projectId,

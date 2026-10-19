@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useTransition } from 'react'
-import { saveSettingsAction, saveLogoUrlAction, removeLogoAction } from './actions'
-import { createClient } from '@/lib/supabase/client'
+import { saveSettingsAction, createLogoUploadAction, saveLogoAction, removeLogoAction } from './actions'
+import { uploadToUrl } from '@/lib/uploadToUrl'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import type { BusinessSettings } from '@/types'
@@ -42,37 +42,10 @@ export function SettingsForm({ settings }: { settings: BusinessSettings | null }
     setLogoError(null)
     setLogoUploading(true)
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
-      const ext = file.type === 'image/png' ? 'png' : 'jpg'
-      const timestamp = Date.now()
-      const path = `${user.id}/logo-${timestamp}.${ext}`
-
-      // Delete old logo file if one exists
-      const { data: currentSettings } = await supabase
-        .from('business_settings')
-        .select('logo_url')
-        .eq('user_id', user.id)
-        .single()
-
-      if (currentSettings?.logo_url) {
-        const marker = '/object/public/logos/'
-        const idx = currentSettings.logo_url.indexOf(marker)
-        if (idx !== -1) {
-          const oldPath = decodeURIComponent(
-            currentSettings.logo_url.substring(idx + marker.length).split('?')[0]
-          )
-          await supabase.storage.from('logos').remove([oldPath])
-        }
-      }
-
-      const { error } = await supabase.storage.from('logos').upload(path, file, { upsert: true })
-      if (error) throw error
-      const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path)
-      const urlWithBust = publicUrl
-      await saveLogoUrlAction(urlWithBust)
-      setLogoUrl(urlWithBust)
+      const { key, url } = await createLogoUploadAction(file.type, file.size)
+      await uploadToUrl(url, file, file.type)
+      const displayUrl = await saveLogoAction(key)
+      setLogoUrl(displayUrl)
     } catch (err: any) {
       setLogoError(err.message ?? 'Upload failed.')
     } finally {

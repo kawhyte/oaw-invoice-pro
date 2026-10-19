@@ -1,6 +1,7 @@
 import { renderToBuffer } from '@react-pdf/renderer'
 import React from 'react'
 import { InvoiceDocument } from '@/components/invoices/InvoiceDocument'
+import { resolveLogoUrl } from '@/lib/storage'
 import type { createClient } from '@/lib/supabase/server'
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>
@@ -27,10 +28,12 @@ export async function renderInvoicePdf(
   ])
 
   if (!invoice) return null
+  // Logos live in a private bucket — sign a short-lived URL for the PDF renderer.
+  const biz = bizSettings ? { ...bizSettings, logo_url: await resolveLogoUrl(bizSettings.logo_url) } : null
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: bizSettings ?? null }) as any
+    React.createElement(InvoiceDocument, { invoice: invoice as any, bizSettings: biz }) as any
   )
 
   return { buffer: Buffer.from(buffer), invoice }

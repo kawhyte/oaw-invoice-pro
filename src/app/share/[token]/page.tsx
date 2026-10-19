@@ -1,5 +1,6 @@
 import type { Viewport } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
+import { signedGetUrl } from '@/lib/storage'
 import { notFound } from 'next/navigation'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { DrawingViewer } from '@/components/share/DrawingViewer'
@@ -34,10 +35,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   ])
 
   const filesWithUrls = await Promise.all(
-    (files ?? []).map(async (file: ProjectFile) => {
-      const { data } = await service.storage.from('project-files').createSignedUrl(file.storage_path, 86400)
-      return { ...file, signedUrl: data?.signedUrl ?? '' }
-    })
+    (files ?? []).map(async (file: ProjectFile) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 86400) }))
   )
 
   // Drawings (payment-gated deliverables). Previews are always shown; the clean
@@ -56,10 +54,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     : { data: [] as any[] }
   const linkedInvoiceById = new Map((linkedInvoices ?? []).map((i: any) => [i.id, i]))
 
-  const signUrl = async (path: string) => {
-    const { data } = await service.storage.from('project-files').createSignedUrl(path, 86400)
-    return data?.signedUrl ?? ''
-  }
+  const signUrl = (path: string) => signedGetUrl(path, 86400)
   const drawings = await Promise.all(
     (deliverables ?? []).map(async (d: ProjectDeliverable) => {
       const previews = await Promise.all((d.preview_paths ?? []).map(signUrl))
@@ -75,8 +70,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         // Save the file under a meaningful name (project + drawing) instead of "original.pdf".
         const safe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim()
         const downloadName = `${safe(project.title)} - ${safe(d.name)}.pdf`
-        const { data } = await service.storage.from('project-files').createSignedUrl(d.storage_path, 86400, { download: downloadName })
-        downloadUrl = data?.signedUrl ?? ''
+        downloadUrl = await signedGetUrl(d.storage_path, 86400, downloadName)
       }
       return { id: d.id, name: d.name, pages, unlocked, downloadUrl }
     })
