@@ -19,11 +19,11 @@ export function FileList({ projectId, files, showVisibility = true }: Props) {
   const confirm = useConfirm()
   const toast = useToast()
 
-  async function handleDelete(fileId: string, storagePath: string) {
+  async function handleDelete(fileId: string) {
     if (!(await confirm({ title: 'Delete this file?', description: 'This removes the file from the project and the client’s shared view.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => {
       try {
-        await deleteFileAction(fileId, storagePath, projectId)
+        await deleteFileAction(fileId, projectId)
       } catch (err) {
         toast.error(toErrorMessage(err))
       }
@@ -70,7 +70,7 @@ export function FileList({ projectId, files, showVisibility = true }: Props) {
                 </button>
               </label>
             )}
-            <button onClick={() => handleDelete(file.id, file.storage_path)} disabled={isPending}
+            <button onClick={() => handleDelete(file.id)} disabled={isPending}
               className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50">Delete</button>
           </div>
         </div>

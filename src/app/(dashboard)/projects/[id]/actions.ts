@@ -145,14 +145,15 @@ export async function toggleFileVisibilityAction(fileId: string, projectId: stri
   revalidatePath(`/projects/${projectId}`)
 }
 
-export async function deleteFileAction(fileId: string, storagePath: string, projectId: string) {
+export async function deleteFileAction(fileId: string, projectId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
-  // Verify the file belongs to a project owned by this user before touching storage/db.
+  // Verify ownership AND read the storage path from the row. Never trust a
+  // caller-supplied path: the service-role client below bypasses Storage RLS.
   const { data: file } = await supabase
     .from('project_files')
-    .select('id, projects!inner(user_id)')
+    .select('id, storage_path, projects!inner(user_id)')
     .eq('id', fileId)
     .eq('project_id', projectId)
     .single()
@@ -160,7 +161,7 @@ export async function deleteFileAction(fileId: string, storagePath: string, proj
     throw new Error('Not found')
   }
   const service = createServiceClient()
-  await service.storage.from('project-files').remove([storagePath])
+  await service.storage.from('project-files').remove([file.storage_path])
   await supabase.from('project_files').delete().eq('id', fileId)
   revalidatePath(`/projects/${projectId}`)
 }

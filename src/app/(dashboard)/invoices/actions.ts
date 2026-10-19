@@ -121,7 +121,7 @@ export async function createInvoiceAction(formData: FormData): Promise<string> {
   })
 
   if (lineItems.length > 0) {
-    await supabase.from('invoice_line_items').insert(
+    const { error: itemsError } = await supabase.from('invoice_line_items').insert(
       lineItems.map((item, i) => ({
         invoice_id: invoice.id,
         description: item.description,
@@ -131,6 +131,7 @@ export async function createInvoiceAction(formData: FormData): Promise<string> {
         sort_order: i,
       }))
     )
+    if (itemsError) throw new Error('Invoice saved but its line items failed to save — open the invoice, re-add the items and save again.')
   }
 
   revalidatePath('/invoices')
@@ -186,7 +187,7 @@ export async function updateInvoiceAction(invoiceId: string, formData: FormData)
 
   await supabase.from('invoice_line_items').delete().eq('invoice_id', invoiceId)
   if (lineItems.length > 0) {
-    await supabase.from('invoice_line_items').insert(
+    const { error: itemsError } = await supabase.from('invoice_line_items').insert(
       lineItems.map((item, i) => ({
         invoice_id: invoiceId,
         description: item.description,
@@ -196,6 +197,7 @@ export async function updateInvoiceAction(invoiceId: string, formData: FormData)
         sort_order: i,
       }))
     )
+    if (itemsError) throw new Error('Invoice saved but its line items failed to save — open the invoice, re-add the items and save again.')
   }
 
   await supabase.from('invoices').update({
@@ -362,7 +364,7 @@ export async function separateInvoiceAction(invoiceId: string): Promise<void> {
     }, sourceMeta[projectId])
 
     if (g.items.length > 0) {
-      await supabase.from('invoice_line_items').insert(
+      const { error: itemsError } = await supabase.from('invoice_line_items').insert(
         g.items.map((item, i) => ({
           invoice_id: created.id,
           project_id: null,
@@ -374,6 +376,8 @@ export async function separateInvoiceAction(invoiceId: string): Promise<void> {
           sort_order: i,
         }))
       )
+      // Stop before the combined invoice is deleted below — its items would be lost.
+      if (itemsError) throw new Error('Separated invoice created but its line items failed to save.')
     }
   }
 
@@ -503,7 +507,15 @@ export async function createCombinedInvoiceAction(formData: FormData): Promise<s
       sort_order: sortOrder++,
     }))
   )
-  if (rows.length > 0) await supabase.from('invoice_line_items').insert(rows)
+  if (rows.length > 0) {
+    const { error: rowsError } = await supabase.from('invoice_line_items').insert(rows)
+    if (rowsError) {
+      // Do NOT absorb (delete) the source drafts below — their line items
+      // would be lost. Remove the empty combined invoice instead.
+      await supabase.from('invoices').delete().eq('id', invoice.id).eq('user_id', user.id)
+      throw new Error('Could not combine invoices — nothing was changed. Please try again.')
+    }
+  }
 
   // Absorb (delete) the source DRAFT invoices so their work isn't double-billed.
   if (absorbIds.length > 0) {

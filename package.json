@@ -24,7 +24,7 @@
     "clsx": "^2.1.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",
-    "next": "16.2.9",
+    "next": "16.4.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-pdf": "^10.4.1",
@@ -41,7 +41,7 @@
     "@types/uuid": "^10.0.0",
     "dotenv-cli": "^11.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
