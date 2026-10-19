@@ -11,6 +11,12 @@ export function ServiceWorkerRegistration() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
+    // Dev only: never cache-serve dev bundles (their URLs don't change between
+    // edits, so the cache-first asset rule would keep running stale code).
+    if (process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()))
+      return
+    }
     navigator.serviceWorker
       .register('/sw.js')
       .then((reg) => {
