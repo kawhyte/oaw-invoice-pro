@@ -39,7 +39,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-56 flex flex-col min-h-screen">
+      {/* min-w-0: a flex child otherwise can't shrink below its content's width,
+          so one wide element (table, long truncated title) widened the whole page. */}
+      <div className="flex-1 min-w-0 lg:ml-56 flex flex-col min-h-screen">
         {/* Mobile top bar */}
         <header className="lg:hidden bg-[#1a1c1e] px-4 h-12 flex items-center justify-between sticky top-0 z-20">
           <Link href="/dashboard" className="text-white font-semibold text-sm tracking-wide">

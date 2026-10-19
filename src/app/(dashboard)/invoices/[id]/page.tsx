@@ -141,13 +141,14 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="label-caps">Line Items</h2>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-[#f8f9fa]">
             <tr>
-              <th className="px-6 py-3 text-left label-caps">Description</th>
-              <th className="px-6 py-3 text-center label-caps">Qty</th>
-              <th className="px-6 py-3 text-right label-caps">Unit Price</th>
-              <th className="px-6 py-3 text-right label-caps">Amount</th>
+              <th className="px-4 sm:px-6 py-3 text-left label-caps">Description</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-center label-caps">Qty</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-right label-caps">Unit Price</th>
+              <th className="px-4 sm:px-6 py-3 text-right label-caps">Amount</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -155,37 +156,44 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               ? sections.map(sec => (
                   <Fragment key={sec.title}>
                     <tr className="bg-[#f5ede4]/50">
-                      <td colSpan={4} className="px-6 py-2 label-caps text-[#715a3e]">{sec.title}</td>
+                      <td colSpan={4} className="px-4 sm:px-6 py-2 label-caps text-[#715a3e]">{sec.title}</td>
                     </tr>
                     {sec.items.map((item: any) => (
                       <tr key={item.id}>
-                        <td className="px-6 py-3 text-sm text-[#1a1c1e]">{item.description}</td>
-                        <td className="px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
-                        <td className="px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
-                        <td className="px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(item.amount)}</td>
+                        <td className="px-4 sm:px-6 py-3 text-sm text-[#1a1c1e] break-words">
+                          {item.description}
+                          <div className="sm:hidden text-xs text-[#8a8c94] data-mono mt-0.5">{item.quantity} × {fmt(item.unit_price)}</div>
+                        </td>
+                        <td className="hidden sm:table-cell px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
+                        <td className="hidden sm:table-cell px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
+                        <td className="px-4 sm:px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono whitespace-nowrap align-top">{fmt(item.amount)}</td>
                       </tr>
                     ))}
                     <tr>
-                      <td colSpan={3} className="px-6 py-2 text-xs text-[#8a8c94] text-right">{sec.title} subtotal</td>
-                      <td className="px-6 py-2 text-sm font-semibold text-[#1a1c1e] text-right data-mono">{fmt(sec.subtotal)}</td>
+                      <td colSpan={3} className="px-4 sm:px-6 py-2 text-xs text-[#8a8c94] text-right">{sec.title} subtotal</td>
+                      <td className="px-4 sm:px-6 py-2 text-sm font-semibold text-[#1a1c1e] text-right data-mono whitespace-nowrap">{fmt(sec.subtotal)}</td>
                     </tr>
                   </Fragment>
                 ))
               : lineItems.map((item: any) => (
                   <tr key={item.id}>
-                    <td className="px-6 py-3 text-sm text-[#1a1c1e]">{item.description}</td>
-                    <td className="px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
-                    <td className="px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
-                    <td className="px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono">{fmt(item.amount)}</td>
+                    <td className="px-4 sm:px-6 py-3 text-sm text-[#1a1c1e] break-words">
+                      {item.description}
+                      <div className="sm:hidden text-xs text-[#8a8c94] data-mono mt-0.5">{item.quantity} × {fmt(item.unit_price)}</div>
+                    </td>
+                    <td className="hidden sm:table-cell px-6 py-3 text-sm text-[#5a5c62] text-center data-mono">{item.quantity}</td>
+                    <td className="hidden sm:table-cell px-6 py-3 text-sm text-[#5a5c62] text-right data-mono">{fmt(item.unit_price)}</td>
+                    <td className="px-4 sm:px-6 py-3 text-sm font-medium text-[#1a1c1e] text-right data-mono whitespace-nowrap align-top">{fmt(item.amount)}</td>
                   </tr>
                 ))}
           </tbody>
         </table>
+        </div>
 
         {/* Summary */}
-        <div className="px-6 py-4 border-t border-gray-100">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-100">
           <div className="flex justify-end">
-            <div className="space-y-1.5 text-sm w-56">
+            <div className="space-y-1.5 text-sm w-full sm:w-56">
               <div className="flex justify-between text-[#5a5c62]"><span>Subtotal</span><span className="data-mono">{fmt(invoice.subtotal)}</span></div>
               {invoice.discount_value > 0 && (
                 <div className="flex justify-between text-[#5a5c62]">
