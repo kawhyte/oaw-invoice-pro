@@ -1,10 +1,10 @@
 'use server'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, like, not } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import {
-  db, clients, projects, project_deliverables,
-  proposals, proposal_line_items, proposal_versions, proposal_drawings,
+  db, clients, projects, project_deliverables, project_files, project_notes, project_tasks,
+  invoices, payments, proposals, proposal_line_items, proposal_versions, proposal_drawings,
 } from '@/db'
 import { requireUser } from '@/lib/session'
 import { signedPutUrl, removeObjects } from '@/lib/storage'
@@ -251,7 +251,11 @@ export async function deleteProposalAction(id: string): Promise<void> {
   const user = await requireUser()
   const keys = await db.transaction(async (tx) => {
     const p = await ownedProposal(tx, id, user.id)
-    if (p.status === 'converted') throw new Error('Converted proposals are kept as the record of the agreement')
+    // A converted proposal is the record behind its invoice; once that invoice
+    // is gone (deleted, or conversion undone) the proposal can go too.
+    if (p.status === 'converted' && p.invoice_id) {
+      throw new Error('This proposal still has its invoice. Use “Undo conversion” first (or delete the invoice), then delete it.')
+    }
     const drawings = await tx.select().from(proposal_drawings).where(eq(proposal_drawings.proposal_id, id))
     await tx.delete(proposals).where(eq(proposals.id, id))
     return drawings.flatMap(d => [d.storage_path, ...(d.preview_paths ?? []), ...(d.zoom_paths ?? [])])
@@ -454,4 +458,83 @@ export async function convertProposalAction(id: string, workStartedAt: string): 
   revalidatePath('/clients')
   revalidatePath(`/clients/${result.clientId}`)
   return { invoiceId: result.invoiceId, projectId: result.projectId }
+}
+
+/**
+ * Reverses "Convert to invoice": the proposal goes back to Accepted so it can
+ * be revised or converted again. Removes the draft invoice the conversion made
+ * (refused if payments were recorded on it — receipts must not vanish), and the
+ * project it made only if nothing else was added to it; the proposal's
+ * drawings move back with it. A client created at conversion is kept.
+ */
+export async function undoConversionAction(id: string): Promise<{ projectKept: string | null }> {
+  const user = await requireUser()
+  const { keys, projectKept } = await db.transaction(async (tx) => {
+    const [p] = await tx.select().from(proposals)
+      .where(and(eq(proposals.id, id), eq(proposals.user_id, user.id))).for('update').limit(1)
+    if (!p) throw new Error('Not found')
+    if (p.status !== 'converted') throw new Error('Only converted proposals can be undone')
+
+    const keys: string[] = []
+    if (p.invoice_id) {
+      const [inv] = await tx.select({ id: invoices.id, invoice_number: invoices.invoice_number }).from(invoices)
+        .where(and(eq(invoices.id, p.invoice_id), eq(invoices.user_id, user.id))).limit(1)
+      if (inv) {
+        const [{ n }] = await tx.select({ n: count() }).from(payments).where(eq(payments.invoice_id, inv.id))
+        if (n > 0) throw new Error(`${inv.invoice_number} has payments recorded. Delete those payments on the invoice first if this really should be undone.`)
+        const saved = await tx.select({ id: project_files.id, storage_path: project_files.storage_path })
+          .from(project_files).where(eq(project_files.invoice_id, inv.id))
+        if (saved.length > 0) {
+          await tx.delete(project_files).where(inArray(project_files.id, saved.map(f => f.id)))
+          keys.push(...saved.map(f => f.storage_path))
+        }
+        await tx.delete(invoices).where(eq(invoices.id, inv.id))
+      }
+    }
+
+    let projectKept: string | null = null
+    if (p.project_id) {
+      const [proj] = await tx.select({ id: projects.id, title: projects.title }).from(projects)
+        .where(and(eq(projects.id, p.project_id), eq(projects.user_id, user.id))).limit(1)
+      if (proj) {
+        // Drawings the conversion moved in still live under this proposal's storage prefix.
+        const fromProposal = like(project_deliverables.storage_path, `${drawingPrefix(user.id, id)}%`)
+        const [[files], [notes], [tasks], [otherInvoices], [otherDeliverables]] = await Promise.all([
+          tx.select({ n: count() }).from(project_files).where(eq(project_files.project_id, proj.id)),
+          tx.select({ n: count() }).from(project_notes).where(eq(project_notes.project_id, proj.id)),
+          tx.select({ n: count() }).from(project_tasks).where(eq(project_tasks.project_id, proj.id)),
+          tx.select({ n: count() }).from(invoices).where(eq(invoices.project_id, proj.id)),
+          tx.select({ n: count() }).from(project_deliverables)
+            .where(and(eq(project_deliverables.project_id, proj.id), not(fromProposal))),
+        ])
+        const untouched = files.n + notes.n + tasks.n + otherInvoices.n + otherDeliverables.n === 0
+        if (untouched) {
+          const moved = await tx.select().from(project_deliverables)
+            .where(and(eq(project_deliverables.project_id, proj.id), fromProposal))
+          if (moved.length > 0) {
+            await tx.insert(proposal_drawings).values(moved.map(d => ({
+              proposal_id: id, name: d.name, storage_path: d.storage_path,
+              preview_paths: d.preview_paths, zoom_paths: d.zoom_paths,
+              page_count: d.page_count, size_bytes: d.size_bytes,
+            })))
+          }
+          await tx.delete(projects).where(eq(projects.id, proj.id)) // cascades its deliverable rows
+        } else {
+          projectKept = proj.title
+        }
+      }
+    }
+
+    await tx.update(proposals).set({
+      status: 'accepted', converted_at: null, invoice_id: null, project_id: null, updated_at: new Date().toISOString(),
+    }).where(eq(proposals.id, id))
+    return { keys, projectKept }
+  })
+  // Storage deletes can't roll back, so they run only after the commit.
+  await removeObjects(keys).catch(() => {})
+
+  revalidateProposal(id)
+  revalidatePath('/invoices')
+  revalidatePath('/projects')
+  return { projectKept }
 }

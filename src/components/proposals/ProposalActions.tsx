@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Copy, Check, Share2, MessageCircle, X } from 'lucide-react'
 import {
   sendProposalAction, renewProposalAction, markAcceptedAction, markDeclinedAction, deleteProposalAction,
+  undoConversionAction,
 } from '@/app/(dashboard)/proposals/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
@@ -31,6 +32,8 @@ interface Props {
   today: string
   acceptedTotal: string
   drawingCount: number
+  /** Converted only: whether the invoice it created still exists. */
+  invoiceNumber: string | null
 }
 
 const BTN = 'px-3 py-1.5 text-sm border border-[#e0e0e3] rounded-lg text-[#1a1c1e] hover:bg-[#f8f9fa] disabled:opacity-50 transition-colors'
@@ -119,6 +122,22 @@ export function ProposalActions(p: Props) {
     run(() => markDeclinedAction(p.id), 'Marked as declined.')
   }
 
+  async function handleUndoConversion() {
+    if (!(await confirm({
+      title: 'Undo conversion?',
+      description: `${p.number} goes back to Accepted so you can change it or convert it again. ${p.invoiceNumber ? `Draft invoice ${p.invoiceNumber} is deleted` : 'Its invoice is already gone'}, and the project it created is removed too — unless you’ve added files, notes, tasks or other invoices to it, in which case the project is kept.`,
+      confirmLabel: 'Undo conversion', variant: 'default',
+    }))) return
+    startTransition(async () => {
+      try {
+        const r = await undoConversionAction(p.id)
+        toast.success(r.projectKept ? `Conversion undone. Project “${r.projectKept}” was kept because it has your own work in it.` : 'Conversion undone — back to Accepted.')
+      } catch (err) {
+        toast.error(toErrorMessage(err))
+      }
+    })
+  }
+
   async function handleDelete() {
     if (!(await confirm({ title: `Delete ${p.number}?`, description: 'The proposal, its versions and drawings are removed and the client link stops working. This cannot be undone.', confirmLabel: 'Delete' }))) return
     run(() => deleteProposalAction(p.id))
@@ -155,7 +174,10 @@ export function ProposalActions(p: Props) {
         {p.status !== 'converted' && p.status !== 'declined' && (
           <button onClick={handleDecline} disabled={isPending} className={BTN}>Mark declined</button>
         )}
-        {p.status !== 'converted' && (
+        {p.status === 'converted' && (
+          <button onClick={handleUndoConversion} disabled={isPending} className={BTN}>Undo conversion</button>
+        )}
+        {(p.status !== 'converted' || !p.invoiceNumber) && (
           <button onClick={handleDelete} disabled={isPending} className="px-3 py-1.5 text-sm text-red-500 hover:text-red-700 disabled:opacity-50">Delete</button>
         )}
       </div>

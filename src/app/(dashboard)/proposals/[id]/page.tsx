@@ -93,7 +93,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
           hasVersion={!!latest} unsentChanges={unsentChanges} recipientName={p.recipient_name} recipientPhone={p.recipient_phone}
           isNewClient={!p.client_id} validUntil={p.valid_until} validUntilLabel={longDate(p.valid_until)} daysLeft={daysLeft}
           today={today} acceptedTotal={accepted ? formatMoney(accepted.total, accepted.snapshot.currency) : fmt(current.total)}
-          drawingCount={drawings.length}
+          drawingCount={drawings.length} invoiceNumber={invoice?.invoice_number ?? null}
         />
       </div>
 
@@ -123,6 +123,11 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
             {invoice ? <Link href={`/invoices/${invoice.id}`} className="text-[#715a3e] underline">{invoice.invoice_number}</Link> : 'Invoice deleted'}
             {' · '}
             {project ? <Link href={`/projects/${project.id}`} className="text-[#715a3e] underline">{project.title}</Link> : 'Project deleted'}
+          </p>
+          <p className="text-xs text-[#8a8c94]">
+            {invoice
+              ? 'Need to change it? “Undo conversion” puts it back to Accepted and removes the draft invoice.'
+              : 'Its invoice is gone — you can undo the conversion to reuse this proposal, or delete it.'}
           </p>
         </div>
       )}
