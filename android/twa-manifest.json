@@ -10,18 +10,18 @@
   "navigationColorDark": "#1A1C1E",
   "navigationDividerColor": "#00000000",
   "navigationDividerColorDark": "#00000000",
-  "backgroundColor": "#FFFFFF",
+  "backgroundColor": "#1A1C1E",
   "enableNotifications": false,
-  "startUrl": "/dashboard",
+  "startUrl": "/launch",
   "iconUrl": "https://oaw-invoice-pro.vercel.app/icons/icon-512.png",
   "maskableIconUrl": "https://oaw-invoice-pro.vercel.app/icons/icon-512.png",
-  "splashScreenFadeOutDuration": 300,
+  "splashScreenFadeOutDuration": 500,
   "signingKey": {
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1.0.1",
-  "appVersionCode": 2,
+  "appVersionName": "1.0.2",
+  "appVersionCode": 3,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://oaw-invoice-pro.vercel.app/manifest.webmanifest",
@@ -42,5 +42,6 @@
   "protocolHandlers": [],
   "fileHandlers": [],
   "launchHandlerClientMode": "",
-  "displayOverride": []
+  "displayOverride": [],
+  "appVersion": "1.0.2"
 }
