@@ -1,15 +1,19 @@
 // Bump VERSION on every sw.js change — activate deletes all caches from
 // older versions. Pages/assets are (re)cached at runtime as they're visited,
 // so a stale cache never outlives a deploy by more than one visit.
-const VERSION = 'v4'
+const VERSION = 'v5'
 const PAGE_CACHE = `ow-pages-${VERSION}`
 const ASSET_CACHE = `ow-assets-${VERSION}`
 const OFFLINE_URL = '/offline'
 const LAUNCH_URL = '/launch' // the installed app's start page (static OW Studio splash)
+const LAUNCH_ICON = '/icons/icon-512.png' // drawn by /launch; precached so it paints instantly
 const MAX_PAGES = 40 // dashboard + lists + ~10-12 projects/invoices; oldest evicted
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(PAGE_CACHE).then((c) => c.addAll([OFFLINE_URL, LAUNCH_URL])))
+  e.waitUntil(Promise.all([
+    caches.open(PAGE_CACHE).then((c) => c.addAll([OFFLINE_URL, LAUNCH_URL])),
+    caches.open(ASSET_CACHE).then((c) => c.add(LAUNCH_ICON)),
+  ]))
   self.skipWaiting()
 })
 
@@ -27,8 +31,9 @@ self.addEventListener('activate', (e) => {
 
 async function trimCache(name, max) {
   const cache = await caches.open(name)
-  const keys = await cache.keys()
-  if (keys.length > max) await cache.delete(keys[0]) // oldest first (insertion order)
+  // Oldest first (insertion order), never the offline or launch pages.
+  const keys = (await cache.keys()).filter((r) => ![OFFLINE_URL, LAUNCH_URL].includes(new URL(r.url).pathname))
+  if (keys.length > max) await cache.delete(keys[0])
 }
 
 self.addEventListener('fetch', (e) => {

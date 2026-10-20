@@ -88,15 +88,14 @@ select.select-field {
 }
 
 /* ---- OW Studio launch screen (src/app/launch) ---------------------------- */
-/* The brand's brown rule (as on the app icon) with a soft sweep across it. */
-.launch-rule { position: relative; }
-.launch-rule::after {
+/* A soft highlight sweeping across the icon's brown rule. */
+.launch-shimmer { overflow: hidden; }
+.launch-shimmer::after {
   content: '';
   position: absolute;
   inset: 0;
-  width: 40%;
-  border-radius: inherit;
-  background: #a88763;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, #f5ede4cc, transparent);
   animation: launch-sweep 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 @keyframes launch-sweep {
@@ -107,11 +106,10 @@ select.select-field {
 .launch-fade { animation: launch-fade-in 0.4s ease-out both; }
 @keyframes launch-fade-in { from { opacity: 0; } }
 /* Dark launch screen dissolving into the dashboard (LaunchReveal). */
-.launch-reveal { animation: launch-reveal 0.45s ease-out 0.05s both; }
+.launch-reveal { animation: launch-reveal 0.45s ease-out both; }
 @keyframes launch-reveal { to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) {
-  .launch-reveal { animation-duration: 0.01s; }
-  .launch-rule::after { width: 100%; transform: none; animation: launch-pulse 1.6s ease-in-out infinite; }
+  .launch-shimmer::after { display: none; }
   .launch-fade { animation: none; }
+  .launch-reveal { animation-duration: 0.01s; }
 }
-@keyframes launch-pulse { 50% { opacity: 0.35; } }

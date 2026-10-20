@@ -15,6 +15,7 @@ import { currentLoad, DEFAULT_MAX_WORKLOAD } from '@/lib/capacity'
 import { FREE_STORAGE_BYTES } from '@/lib/uploadLimits'
 import { addDaysToDate, todayInBusinessTz } from '@/lib/dates'
 import { ProposalsCard } from '@/components/dashboard/ProposalsCard'
+import { LaunchReady } from '@/components/LaunchReveal'
 
 export default async function DashboardPage() {
   const user = await requireUserPage()
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <LaunchReady />
       <div>
         <h1 className="font-serif text-2xl font-bold text-[#1a1c1e]">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-0.5">Overview of your projects and billing</p>
