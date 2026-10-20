@@ -25,6 +25,8 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const toast = useToast()
+  // Why "Create" can't go ahead yet — shown next to the field instead of a dead button.
+  const [errors, setErrors] = useState<{ project?: string; items?: string }>({})
 
   const [selectedProjectId, setSelectedProjectId] = useState(() =>
     editMode && invoice ? invoice.project_id ?? '' : ''
@@ -75,6 +77,7 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
 
   function handleProjectChange(id: string) {
     setSelectedProjectId(id)
+    if (id) setErrors(e => ({ ...e, project: undefined }))
     const p = projects.find(p => p.id === id)
     if (p?.clients?.currency) {
       setCurrency(p.clients.currency as 'JMD' | 'USD')
@@ -84,6 +87,7 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
 
   function updateItem(tempId: string, field: keyof Omit<LineItem, 'tempId'>, value: string) {
     setLineItems(prev => prev.map(i => i.tempId === tempId ? { ...i, [field]: value } : i))
+    setErrors(e => ({ ...e, items: undefined }))
   }
 
   const subtotal = lineSubtotal(lineItems.map(i => ({ quantity: parseFloat(i.quantity) || 0, unit_price: parseFloat(i.unit_price) || 0 })))
@@ -102,9 +106,24 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!editMode && !selectedProjectId) return
-    const validItems = lineItems.filter(i => i.description.trim() && parseFloat(i.unit_price) > 0)
-    if (!validItems.length) return
+    const next: { project?: string; items?: string } = {}
+    if (!editMode && !selectedProjectId) next.project = 'Pick the project this invoice is for.'
+    // A row counts once it has a description and a price; half-filled rows are called out, not silently dropped.
+    const started = lineItems.filter(i => i.description.trim() || i.unit_price.trim())
+    const incomplete = started.findIndex(i => !i.description.trim() || !(parseFloat(i.unit_price) > 0))
+    if (incomplete >= 0) {
+      const i = started[incomplete]
+      next.items = `Item ${lineItems.indexOf(i) + 1} needs ${!i.description.trim() ? 'a description' : 'a price above 0'}.`
+    } else if (started.length === 0) {
+      next.items = 'Add at least one line item with a description and a price.'
+    }
+    setErrors(next)
+    if (next.project || next.items) {
+      toast.error(next.project ?? next.items!)
+      document.getElementById(next.project ? 'invoice-project' : 'invoice-items')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    const validItems = started
 
     const fd = new FormData()
     fd.set('project_id', selectedProjectId)
@@ -145,7 +164,7 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6 max-w-3xl">
 
       {/* Business info banner */}
       {bizSettings?.business_name ? (
@@ -173,10 +192,18 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
                 {invoiceProject?.title} — {invoiceProject?.clients?.name}
               </div>
             ) : (
-              <select value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)} required className={`${INPUT} select-field`}>
-                <option value="">Select a project</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.title} — {p.clients?.name}</option>)}
-              </select>
+              <>
+                <select id="invoice-project" value={selectedProjectId} onChange={e => handleProjectChange(e.target.value)}
+                  aria-invalid={!!errors.project}
+                  className={`${INPUT} select-field ${errors.project ? 'border-red-400 ring-1 ring-red-300' : ''}`}>
+                  <option value="">Select a project</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.title} — {p.clients?.name}</option>)}
+                </select>
+                {errors.project && <p className="text-xs text-red-600 mt-1">{errors.project}</p>}
+                <p className="text-xs text-[#8a8c94] mt-1">
+                  Job not listed? <Link href="/projects" className="text-[#715a3e] underline">Create the project first</Link>, then come back.
+                </p>
+              </>
             )}
           </div>
           <div>
@@ -224,31 +251,42 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
       </div>
 
       {/* Line Items */}
-      <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 space-y-3">
+      <div id="invoice-items" className={`bg-white rounded-xl border shadow-card p-6 space-y-3 ${errors.items ? 'border-red-300' : 'border-[#e0e0e3]'}`}>
         <h2 className="label-caps">Line Items</h2>
+        {errors.items && <p className="text-sm text-red-600">{errors.items}</p>}
         <div className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 text-xs font-medium text-[#8a8c94] px-1">
+          <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-medium text-[#8a8c94] px-1">
             <span className="col-span-5">Description</span>
             <span className="col-span-2 text-center">Qty</span>
             <span className="col-span-3">Unit Price</span>
             <span className="col-span-1 text-right">Amount</span>
             <span className="col-span-1" />
           </div>
-          {lineItems.map(item => {
+          {lineItems.map((item, idx) => {
             const amt = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)
             return (
-              <div key={item.tempId} className="grid grid-cols-12 gap-2 items-center">
+              // Phones: description on its own line, then qty / price / amount / remove.
+              // sm+: the original single row under the column headers.
+              <div key={item.tempId} className="grid grid-cols-12 gap-2 items-center pb-3 border-b border-gray-100 last:border-0 sm:pb-0 sm:border-0">
                 <input value={item.description} onChange={e => updateItem(item.tempId, 'description', e.target.value)}
-                  placeholder="Description of work"
-                  className={`col-span-5 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]`} />
-                <input type="number" min="0.01" step="0.01" value={item.quantity} onChange={e => updateItem(item.tempId, 'quantity', e.target.value)}
-                  className="col-span-2 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white text-center data-mono focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
-                <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => updateItem(item.tempId, 'unit_price', e.target.value)}
-                  placeholder="0.00"
-                  className="col-span-3 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white data-mono focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
-                <span className="col-span-1 text-sm text-[#5a5c62] text-right font-medium data-mono">{fmt(amt)}</span>
+                  placeholder={`Item ${idx + 1} — description of work`} aria-label={`Item ${idx + 1} description`}
+                  className={`col-span-12 sm:col-span-5 px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]`} />
+                <label className="col-span-3 sm:col-span-2">
+                  <span className="sm:hidden block text-[11px] text-[#8a8c94] mb-0.5">Qty</span>
+                  <input type="number" inputMode="decimal" min="0.01" step="0.01" value={item.quantity} onChange={e => updateItem(item.tempId, 'quantity', e.target.value)}
+                    aria-label={`Item ${idx + 1} quantity`}
+                    className="w-full px-2 sm:px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white text-center data-mono focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
+                </label>
+                <label className="col-span-5 sm:col-span-3">
+                  <span className="sm:hidden block text-[11px] text-[#8a8c94] mb-0.5">Unit price</span>
+                  <input type="number" inputMode="decimal" min="0" step="0.01" value={item.unit_price} onChange={e => updateItem(item.tempId, 'unit_price', e.target.value)}
+                    placeholder="0.00" aria-label={`Item ${idx + 1} unit price`}
+                    className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white data-mono focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />
+                </label>
+                <span className="col-span-3 sm:col-span-1 self-end sm:self-center pb-2 sm:pb-0 text-xs sm:text-sm text-[#5a5c62] text-right font-medium data-mono truncate">{fmt(amt)}</span>
                 <button type="button" onClick={() => setLineItems(p => p.filter(i => i.tempId !== item.tempId))}
-                  disabled={lineItems.length <= 1} className="col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-20 text-lg leading-none text-center">×</button>
+                  disabled={lineItems.length <= 1} aria-label={`Remove item ${idx + 1}`}
+                  className="col-span-1 self-end sm:self-center pb-1.5 sm:pb-0 text-gray-400 hover:text-red-500 disabled:opacity-20 text-lg leading-none text-center">×</button>
               </div>
             )
           })}
@@ -324,7 +362,7 @@ export function InvoiceForm({ projects, bizSettings, invoice, editMode }: Invoic
         ) : (
           <button type="button" onClick={() => router.back()} className="px-4 py-2 text-sm text-[#5a5c62] hover:text-[#1a1c1e]">Cancel</button>
         )}
-        <button type="submit" disabled={isPending || (!editMode && !selectedProjectId)}
+        <button type="submit" disabled={isPending}
           className="px-6 py-2 text-sm bg-[#715a3e] text-white rounded-lg hover:bg-[#8b7355] disabled:opacity-50 font-medium">
           {isPending ? (editMode ? 'Saving...' : 'Creating...') : (editMode ? 'Save Changes' : 'Create Invoice')}
         </button>
