@@ -2,7 +2,6 @@ import { cache } from 'react'
 import { eq } from 'drizzle-orm'
 import { db, business_settings } from '@/db'
 import { requireUserPage } from '@/lib/session'
-import { resolveLogoUrl } from '@/lib/storage'
 import { NavDropdown } from '@/components/NavDropdown'
 
 // Logo + business name for the nav. Streamed in (Suspense in the dashboard
@@ -13,7 +12,13 @@ const loadIdentity = cache(async (userId: string) => {
     columns: { business_name: true, logo_url: true },
     where: eq(business_settings.user_id, userId),
   })
-  return { logoUrl: await resolveLogoUrl(s?.logo_url), businessName: s?.business_name ?? null }
+  const logo = s?.logo_url
+  // Legacy absolute URLs are used as-is; storage keys go through the cacheable
+  // same-origin /api/logo (the key versions the URL, so a new upload busts it).
+  const logoUrl = !logo ? null
+    : /^https?:\/\//.test(logo) ? logo.split('?')[0]
+    : `/api/logo?v=${encodeURIComponent(logo.split('/').pop() ?? logo)}`
+  return { logoUrl, businessName: s?.business_name ?? null }
 })
 
 export async function NavIdentity({ align }: { align?: 'up' | 'down' }) {

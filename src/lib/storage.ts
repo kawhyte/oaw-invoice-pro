@@ -86,3 +86,14 @@ export async function resolveLogoUrl(logo: string | null | undefined): Promise<s
   if (/^https?:\/\//.test(logo)) return logo.split('?')[0]
   return signedGetUrl(logo, 3600)
 }
+
+/** Streams one object's bytes (server-side read; used for the cacheable nav logo). */
+export async function getObject(key: string): Promise<{ body: Uint8Array; contentType: string } | null> {
+  try {
+    const res = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key }))
+    if (!res.Body) return null
+    return { body: await res.Body.transformToByteArray(), contentType: res.ContentType ?? 'application/octet-stream' }
+  } catch {
+    return null
+  }
+}

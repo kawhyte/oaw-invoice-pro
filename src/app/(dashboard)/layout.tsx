@@ -5,6 +5,7 @@ import { NavIdentity } from '@/components/NavIdentity'
 import { NavLinks } from '@/components/NavLinks'
 import { NavDropdown } from '@/components/NavDropdown'
 import { MobileNav } from '@/components/MobileNav'
+import { LaunchReveal } from '@/components/LaunchReveal'
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog'
 import { ToastProvider } from '@/components/ui/Toast'
 
@@ -52,6 +53,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </div>
 
       <MobileNav />
+      <LaunchReveal />
     </div>
   )
 }

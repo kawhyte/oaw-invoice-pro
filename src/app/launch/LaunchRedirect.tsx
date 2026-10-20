@@ -10,6 +10,8 @@ export function LaunchRedirect() {
   const [slow, setSlow] = useState(false)
 
   useEffect(() => {
+    // Tells the dashboard's LaunchReveal to fade this screen out over it.
+    document.documentElement.dataset.launch = '1'
     router.prefetch('/dashboard')
     router.replace('/dashboard')
     const t = setTimeout(() => setSlow(true), 12000)

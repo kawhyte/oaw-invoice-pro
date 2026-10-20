@@ -1,7 +1,7 @@
 // Bump VERSION on every sw.js change — activate deletes all caches from
 // older versions. Pages/assets are (re)cached at runtime as they're visited,
 // so a stale cache never outlives a deploy by more than one visit.
-const VERSION = 'v3'
+const VERSION = 'v4'
 const PAGE_CACHE = `ow-pages-${VERSION}`
 const ASSET_CACHE = `ow-assets-${VERSION}`
 const OFFLINE_URL = '/offline'
