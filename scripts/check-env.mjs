@@ -19,6 +19,7 @@ const REQUIRED = [
 // silently point at the wrong database.
 const REFS = {
   'ep-silent-unit-b8zt7nlx': 'STAGING',
+  'ep-spring-firefly-b8bs07ln': 'PRODUCTION',
 }
 
 function parse(file) {
