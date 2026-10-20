@@ -2,7 +2,7 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { db, invoices, invoice_line_items, invoice_payments, projects, clients, project_files } from '@/db'
+import { db, invoices, invoice_line_items, invoice_payments, payments, projects, clients, project_files } from '@/db'
 import { requireUser } from '@/lib/session'
 import { putObject, removeObjects } from '@/lib/storage'
 import type { Currency, DiscountType } from '@/types'
@@ -10,6 +10,7 @@ import { lineSubtotal, computeTotals, computeStatus, round2 } from '@/lib/invoic
 import { todayInBusinessTz } from '@/lib/dates'
 import { renderInvoicePdf } from '@/lib/invoicePdf'
 import { insertInvoiceWithUniqueNumber, insertLineItems, type Exec } from '@/lib/invoiceNumbering'
+import { insertPayment, parsePayment, syncInvoicePaid } from '@/lib/payments'
 
 type LineItemInput = { description: string; quantity: number; unit_price: number }
 
@@ -41,7 +42,7 @@ export async function createInvoiceAction(formData: FormData): Promise<string> {
 
   const subtotal = lineSubtotal(lineItems)
   const { gctAmount, total } = computeTotals({ subtotal, discountType, discountValue, gctRate, additionsAmount })
-  const status = computeStatus({ amountPaid, total, dueDate, wasSent: false })
+  if (amountPaid > total + 0.005) throw new Error('Amount already paid can’t be more than the invoice total')
 
   const projectId = formData.get('project_id') as string
   // Verify the project belongs to the user and capture its client for the direct link.
@@ -62,12 +63,16 @@ export async function createInvoiceAction(formData: FormData): Promise<string> {
       additions_description: (formData.get('additions_description') as string) || null,
       additions_amount: additionsAmount,
       total,
-      amount_paid: amountPaid,
+      amount_paid: 0,
       due_date: dueDate,
-      status,
+      status: computeStatus({ amountPaid: 0, total, dueDate, wasSent: false }),
       notes: (formData.get('notes') as string) || null,
     })
     await insertLineItems(tx, created.id, lineItems)
+    // "Amount already paid" is a real payment (with a receipt), dated today.
+    if (amountPaid > 0) {
+      await insertPayment(tx, user.id, created.id, { amount: amountPaid, paid_on: todayInBusinessTz(), method: null, note: 'Recorded when the invoice was created' })
+    }
     return created
   })
 
@@ -75,19 +80,59 @@ export async function createInvoiceAction(formData: FormData): Promise<string> {
   return invoice.id
 }
 
-export async function updateAmountPaidAction(invoiceId: string, amountPaid: number) {
-  const user = await requireUser()
-  const [invoice] = await db.select({ total: invoices.total, due_date: invoices.due_date, status: invoices.status })
-    .from(invoices).where(and(eq(invoices.id, invoiceId), eq(invoices.user_id, user.id))).limit(1)
-  if (!invoice) throw new Error('Not found')
+/** Loads an invoice's owner-scoped row or throws. */
+async function ownedInvoice(invoiceId: string, userId: string) {
+  const [inv] = await db.select({ id: invoices.id, total: invoices.total, amount_paid: invoices.amount_paid })
+    .from(invoices).where(and(eq(invoices.id, invoiceId), eq(invoices.user_id, userId))).limit(1)
+  if (!inv) throw new Error('Not found')
+  return inv
+}
 
-  const wasSent = invoice.status === 'sent'
-  const status = computeStatus({ amountPaid, total: invoice.total, dueDate: invoice.due_date, wasSent })
-
-  await db.update(invoices).set({ amount_paid: amountPaid, status })
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.user_id, user.id)))
+function revalidateInvoice(invoiceId: string) {
   revalidatePath(`/invoices/${invoiceId}`)
   revalidatePath('/invoices')
+  revalidatePath('/dashboard')
+}
+
+/** Records money received against an invoice; returns the new receipt. */
+export async function recordPaymentAction(
+  invoiceId: string,
+  input: { amount: number; paid_on: string; method: string | null; note: string | null },
+): Promise<{ id: string; receipt_number: string }> {
+  const user = await requireUser()
+  const p = parsePayment(input)
+  if (p.paid_on > todayInBusinessTz()) throw new Error('The payment date can’t be in the future')
+  const inv = await ownedInvoice(invoiceId, user.id)
+  const owing = round2(inv.total - inv.amount_paid)
+  if (p.amount > owing + 0.005) throw new Error(owing > 0 ? `That’s more than the ${owing.toFixed(2)} still owing` : 'This invoice is already fully paid')
+  const receipt = await db.transaction((tx) => insertPayment(tx, user.id, invoiceId, p))
+  revalidateInvoice(invoiceId)
+  return receipt
+}
+
+/** One tap from the invoice list: records the remaining balance as paid today. */
+export async function markInvoicePaidAction(invoiceId: string): Promise<{ receipt_number: string } | null> {
+  const user = await requireUser()
+  const inv = await ownedInvoice(invoiceId, user.id)
+  const owing = round2(inv.total - inv.amount_paid)
+  if (owing <= 0) return null
+  const receipt = await db.transaction((tx) =>
+    insertPayment(tx, user.id, invoiceId, { amount: owing, paid_on: todayInBusinessTz(), method: null, note: null }))
+  revalidateInvoice(invoiceId)
+  return { receipt_number: receipt.receipt_number }
+}
+
+/** Removes a payment recorded by mistake. Its receipt number is never reused. */
+export async function deletePaymentAction(paymentId: string, invoiceId: string): Promise<void> {
+  const user = await requireUser()
+  await db.transaction(async (tx) => {
+    const deleted = await tx.delete(payments)
+      .where(and(eq(payments.id, paymentId), eq(payments.invoice_id, invoiceId), eq(payments.user_id, user.id)))
+      .returning({ id: payments.id })
+    if (deleted.length === 0) throw new Error('Not found')
+    await syncInvoicePaid(tx, invoiceId, user.id)
+  })
+  revalidateInvoice(invoiceId)
 }
 
 export async function markSentAction(invoiceId: string) {
@@ -101,10 +146,12 @@ export async function markSentAction(invoiceId: string) {
 export async function updateInvoiceAction(invoiceId: string, formData: FormData): Promise<void> {
   const user = await requireUser()
 
-  const [current] = await db.select({ status: invoices.status }).from(invoices)
+  // Payments are recorded on the invoice page, never through this form.
+  const [current] = await db.select({ status: invoices.status, amount_paid: invoices.amount_paid }).from(invoices)
     .where(and(eq(invoices.id, invoiceId), eq(invoices.user_id, user.id))).limit(1)
   if (!current) throw new Error('Not found')
   const wasSent = current.status !== 'draft'
+  const amountPaid = current.amount_paid
 
   const lineItems = JSON.parse(formData.get('line_items') as string) as LineItemInput[]
   const currency = formData.get('currency') as Currency
@@ -112,7 +159,6 @@ export async function updateInvoiceAction(invoiceId: string, formData: FormData)
   const discountValue = parseFloat(formData.get('discount_value') as string) || 0
   const gctRate = formData.get('use_gct') === 'true' ? 0.15 : 0
   const additionsAmount = parseFloat(formData.get('additions_amount') as string) || 0
-  const amountPaid = parseFloat(formData.get('amount_paid') as string) || 0
   const dueDate = (formData.get('due_date') as string) || null
 
   const subtotal = lineSubtotal(lineItems)
@@ -133,7 +179,6 @@ export async function updateInvoiceAction(invoiceId: string, formData: FormData)
       additions_amount: additionsAmount,
       subtotal,
       total,
-      amount_paid: amountPaid,
       due_date: dueDate || null,
       status,
       notes: (formData.get('notes') as string) || null,
@@ -344,7 +389,8 @@ export async function createCombinedInvoiceAction(formData: FormData): Promise<s
   const allItems = sections.flatMap(s => s.line_items)
   const subtotal = lineSubtotal(allItems)
   const { gctAmount, total } = computeTotals({ subtotal, discountType, discountValue, gctRate, additionsAmount })
-  const status = computeStatus({ amountPaid, total, dueDate, wasSent: false })
+  const status = computeStatus({ amountPaid: 0, total, dueDate, wasSent: false })
+  if (amountPaid > total + 0.005) throw new Error('Amount already paid can’t be more than the invoice total')
 
   const absorbIds = (JSON.parse((formData.get('absorb_invoice_ids') as string) || '[]') as string[])
 
@@ -374,7 +420,7 @@ export async function createCombinedInvoiceAction(formData: FormData): Promise<s
       additions_description: (formData.get('additions_description') as string) || null,
       additions_amount: additionsAmount,
       total,
-      amount_paid: amountPaid,
+      amount_paid: 0,
       due_date: dueDate,
       status,
       notes: (formData.get('notes') as string) || null,
@@ -395,6 +441,10 @@ export async function createCombinedInvoiceAction(formData: FormData): Promise<s
       }))
     )
     if (rows.length > 0) await tx.insert(invoice_line_items).values(rows)
+    // "Amount already paid" is a real payment (with a receipt), dated today.
+    if (amountPaid > 0) {
+      await insertPayment(tx, user.id, created.id, { amount: amountPaid, paid_on: todayInBusinessTz(), method: null, note: 'Recorded when the invoice was created' })
+    }
 
     // Absorb (delete) the source DRAFT invoices so their work isn't double-billed.
     let k: string[] = []

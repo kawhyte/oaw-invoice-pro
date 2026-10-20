@@ -1,7 +1,7 @@
 import { type PgTableExtraConfigValue, pgTable, unique, uuid, text, numeric, timestamp, index, foreignKey, jsonb, integer, bigint, boolean, date, check, uniqueIndex } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import type {
-	Currency, ProjectStatus, InvoiceStatus, PaymentStatus, DiscountType,
+	Currency, ProjectStatus, InvoiceStatus, PaymentStatus, PaymentMethod, DiscountType,
 	StoredProposalStatus, ProposalItemCategory, ProposalSnapshot,
 } from "@/types"
 
@@ -216,6 +216,31 @@ export const invoices = pgTable("invoices", {
 			foreignColumns: [proposals.id],
 			name: "invoices_proposal_id_fkey"
 		}).onDelete("set null"),
+]);
+
+// Money actually received against an invoice — one row per payment. The
+// invoice's amount_paid is always the sum of these (lib/payments.ts keeps it
+// in sync). receipt_number is RCT-### for payments recorded in the app; NULL
+// for the opening rows backfilled from amount_paid before payments were logged.
+export const payments = pgTable("payments", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	user_id: uuid().notNull(),
+	invoice_id: uuid().notNull(),
+	receipt_number: text(),
+	amount: numeric({ mode: 'number' }).notNull(),
+	paid_on: date({ mode: 'string' }).notNull(),
+	method: text().$type<PaymentMethod>(),
+	note: text(),
+	created_at: timestamp({ withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("payments_invoice_id_idx").using("btree", table.invoice_id.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("payments_user_receipt_uniq").using("btree", table.user_id.asc().nullsLast().op("uuid_ops"), table.receipt_number.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.invoice_id],
+			foreignColumns: [invoices.id],
+			name: "payments_invoice_id_fkey"
+		}).onDelete("cascade"),
+	check("payments_amount_positive", sql`${table.amount} > 0`),
 ]);
 
 export const invoice_line_items = pgTable("invoice_line_items", {

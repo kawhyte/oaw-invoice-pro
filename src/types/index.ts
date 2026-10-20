@@ -170,6 +170,21 @@ export interface Invoice {
 	invoice_line_items?: InvoiceLineItem[];
 }
 
+export type PaymentMethod = "cash" | "bank_transfer" | "cheque" | "card" | "other";
+
+/** Money received against an invoice (the payments table). */
+export interface Payment {
+	id: string;
+	invoice_id: string;
+	/** RCT-###; null for "earlier payments" backfilled before payments were logged. */
+	receipt_number: string | null;
+	amount: number;
+	paid_on: string;
+	method: PaymentMethod | null;
+	note: string | null;
+	created_at: string;
+}
+
 export interface InvoicePayment {
 	id: string;
 	invoice_id: string;

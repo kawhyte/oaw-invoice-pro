@@ -22,6 +22,13 @@
       "when": 1792464532068,
       "tag": "0002_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792470865199,
+      "tag": "0003_payments",
+      "breakpoints": true
     }
   ]
 }

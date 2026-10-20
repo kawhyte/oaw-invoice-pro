@@ -1,6 +1,6 @@
 import { relations } from 'drizzle-orm/relations'
 import {
-  invoices, project_deliverables, projects, clients, invoice_payments,
+  invoices, project_deliverables, projects, clients, invoice_payments, payments,
   project_files, project_notes, project_tasks, invoice_line_items,
   proposals, proposal_line_items, proposal_versions, proposal_responses, proposal_drawings,
 } from './schema'
@@ -17,6 +17,7 @@ export const project_deliverablesRelations = relations(project_deliverables, ({ 
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
   project_deliverables: many(project_deliverables),
   invoice_payments: many(invoice_payments),
+  payments: many(payments),
   project_files: many(project_files),
   clients: one(clients, { fields: [invoices.client_id], references: [clients.id] }),
   projects: one(projects, { fields: [invoices.project_id], references: [projects.id] }),
@@ -40,6 +41,10 @@ export const clientsRelations = relations(clients, ({ many }) => ({
 
 export const invoice_paymentsRelations = relations(invoice_payments, ({ one }) => ({
   invoices: one(invoices, { fields: [invoice_payments.invoice_id], references: [invoices.id] }),
+}))
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  invoices: one(invoices, { fields: [payments.invoice_id], references: [invoices.id] }),
 }))
 
 export const project_filesRelations = relations(project_files, ({ one }) => ({

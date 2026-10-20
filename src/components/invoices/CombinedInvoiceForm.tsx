@@ -283,7 +283,7 @@ export function CombinedInvoiceForm({ client, projects, bizSettings }: Props) {
         <div>
           <label className="block text-sm font-medium text-[#5a5c62] mb-1">Amount Already Paid ({currency})</label>
           <input type="number" min="0" step="0.01" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0.00" className={INPUT} />
-          <p className="text-xs text-[#8a8c94] mt-1">Leave 0 if nothing has been paid yet</p>
+          <p className="text-xs text-[#8a8c94] mt-1">Leave 0 if nothing has been paid yet. Anything here is recorded as a payment dated today, with a receipt.</p>
         </div>
       </div>
 

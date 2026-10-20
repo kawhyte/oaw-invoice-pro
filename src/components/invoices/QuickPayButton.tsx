@@ -1,6 +1,6 @@
 'use client'
 import { useTransition } from 'react'
-import { updateAmountPaidAction } from '@/app/(dashboard)/invoices/actions'
+import { markInvoicePaidAction } from '@/app/(dashboard)/invoices/actions'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
 
@@ -13,9 +13,9 @@ interface Props {
 }
 
 /**
- * One-tap "client paid this in full" from list rows. Reuses the existing
- * updateAmountPaidAction (auth + ownership + status recompute + revalidate
- * live there). Rendered inside clickable rows/Links, so it must stop the
+ * One-tap "client paid the rest" from list rows: records the remaining
+ * balance as a payment dated today (with its own receipt, shareable from the
+ * invoice page). Rendered inside clickable rows/Links, so it must stop the
  * row's navigation (preventDefault + stopPropagation).
  */
 export function QuickPayButton({ invoiceId, invoiceNumber, total, amountPaid, currency }: Props) {
@@ -26,7 +26,7 @@ export function QuickPayButton({ invoiceId, invoiceNumber, total, amountPaid, cu
   const owing = Number(total) - Number(amountPaid)
   if (!(Number(total) > 0) || owing <= 0) return null
 
-  const fmtTotal = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(total))
+  const fmtOwing = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(owing)
 
   return (
     <button
@@ -37,15 +37,15 @@ export function QuickPayButton({ invoiceId, invoiceNumber, total, amountPaid, cu
         e.stopPropagation()
         const ok = await confirm({
           title: `Mark ${invoiceNumber} as paid?`,
-          description: `Records the full ${fmtTotal} as received.`,
+          description: `Records the remaining ${fmtOwing} as received today, with a receipt you can share from the invoice.`,
           confirmLabel: 'Mark paid',
           variant: 'default',
         })
         if (!ok) return
         startTransition(async () => {
           try {
-            await updateAmountPaidAction(invoiceId, Number(total))
-            toast.success(`${invoiceNumber} marked paid.`)
+            const r = await markInvoicePaidAction(invoiceId)
+            toast.success(r ? `${invoiceNumber} marked paid — receipt ${r.receipt_number}.` : `${invoiceNumber} is already paid.`)
           } catch (err) {
             toast.error(toErrorMessage(err))
           }

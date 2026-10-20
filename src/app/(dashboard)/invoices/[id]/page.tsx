@@ -1,12 +1,13 @@
 import { Fragment } from 'react'
-import { and, eq } from 'drizzle-orm'
-import { db, invoices, project_files, invoice_line_items, proposals } from '@/db'
+import { and, asc, eq } from 'drizzle-orm'
+import { db, invoices, project_files, invoice_line_items, proposals, payments } from '@/db'
 import { requireUserPage } from '@/lib/session'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { InvoiceActions } from '@/components/invoices/InvoiceActions'
 import { SeparateInvoiceButton } from '@/components/invoices/SeparateInvoiceButton'
-import { AmountPaidForm } from '@/components/invoices/AmountPaidForm'
+import { PaymentsPanel } from '@/components/invoices/PaymentsPanel'
+import { todayInBusinessTz } from '@/lib/dates'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { discountAmountFor } from '@/lib/invoiceCalc'
 
@@ -23,6 +24,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       },
       clients: { columns: { id: true, name: true, email: true, phone: true } },
       invoice_line_items: { orderBy: invoice_line_items.sort_order },
+      payments: { orderBy: [asc(payments.paid_on), asc(payments.created_at)] },
     },
   })
 
@@ -233,8 +235,17 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {/* Amount Paid Tracker */}
-      <AmountPaidForm invoiceId={id} currentAmountPaid={invoice.amount_paid} total={invoice.total} currency={invoice.currency} />
+      {/* Payments received, each with its own receipt */}
+      <PaymentsPanel
+        invoiceId={id}
+        invoiceNumber={invoice.invoice_number}
+        currency={invoice.currency}
+        total={invoice.total}
+        amountPaid={invoice.amount_paid}
+        clientName={client?.name ?? null}
+        payments={invoice.payments}
+        today={todayInBusinessTz()}
+      />
 
       {/* Meta */}
       <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-6 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
