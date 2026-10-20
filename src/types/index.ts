@@ -159,6 +159,12 @@ export interface Invoice {
 	created_at: string;
 	/** For combined invoices: { [project_id]: original draft invoice_number } — used to restore numbers on Separate. */
 	source_meta?: Record<string, string> | null;
+	/** Set when the invoice was created by converting a proposal. */
+	proposal_id?: string | null;
+	/** The proposal total the client agreed to (at conversion). */
+	agreed_amount?: number | null;
+	/** YYYY-MM-DD the owner started the work (picked at conversion). */
+	work_started_at?: string | null;
 	projects?: Project;
 	clients?: Client;
 	invoice_line_items?: InvoiceLineItem[];
@@ -186,4 +192,125 @@ export interface BusinessSettings {
 	/** Max workload points before the owner is at full capacity. NULL = use default. */
 	max_workload: number | null;
 	updated_at: string;
+}
+
+// ---- Proposals ---------------------------------------------------------------
+
+/** Statuses stored in the DB. 'expired' is never stored — see effectiveStatus() in lib/proposals. */
+export type StoredProposalStatus = "draft" | "sent" | "revised" | "accepted" | "declined" | "converted";
+export type ProposalStatus = StoredProposalStatus | "expired";
+export type ProposalItemCategory = "labour" | "equipment" | "materials";
+
+export const PROPOSAL_CATEGORIES: { value: ProposalItemCategory; label: string }[] = [
+	{ value: "labour", label: "Labour" },
+	{ value: "equipment", label: "Equipment" },
+	{ value: "materials", label: "Materials" },
+];
+
+export interface ProposalSnapshotItem {
+	category: ProposalItemCategory | null;
+	description: string;
+	quantity: number;
+	unit_price: number;
+	amount: number;
+}
+
+/** What the client saw for one sent version — frozen at send time. */
+export interface ProposalSnapshot {
+	title: string;
+	scope: string | null;
+	job_type: string | null;
+	location_address: string | null;
+	recipient_name: string;
+	currency: Currency;
+	items: ProposalSnapshotItem[];
+	subtotal: number;
+	discount_type: DiscountType;
+	discount_value: number;
+	discount_amount: number;
+	gct_rate: number;
+	gct_amount: number;
+	additions_description: string | null;
+	additions_amount: number;
+	total: number;
+	notes: string | null;
+}
+
+export interface ProposalLineItem {
+	id: string;
+	proposal_id: string;
+	category: ProposalItemCategory | null;
+	description: string;
+	quantity: number;
+	unit_price: number;
+	amount: number;
+	sort_order: number;
+}
+
+export interface Proposal {
+	id: string;
+	user_id: string;
+	proposal_number: string;
+	client_id: string | null;
+	recipient_name: string;
+	recipient_phone: string | null;
+	recipient_email: string | null;
+	title: string;
+	scope: string | null;
+	job_type: string | null;
+	location_address: string | null;
+	currency: Currency;
+	subtotal: number;
+	discount_type: DiscountType;
+	discount_value: number;
+	gct_rate: number;
+	gct_amount: number;
+	additions_description: string | null;
+	additions_amount: number;
+	total: number;
+	notes: string | null;
+	valid_until: string;
+	status: StoredProposalStatus;
+	share_token: string;
+	changes_requested_at: string | null;
+	accepted_at: string | null;
+	accepted_version: number | null;
+	accepted_by_name: string | null;
+	converted_at: string | null;
+	invoice_id: string | null;
+	project_id: string | null;
+	created_at: string;
+	updated_at: string;
+	proposal_line_items?: ProposalLineItem[];
+}
+
+export interface ProposalVersion {
+	id: string;
+	proposal_id: string;
+	version: number;
+	snapshot: ProposalSnapshot;
+	total: number;
+	sent_at: string;
+}
+
+export interface ProposalResponse {
+	id: string;
+	proposal_id: string;
+	version: number;
+	kind: "accept" | "changes";
+	responder_name: string | null;
+	note: string | null;
+	created_at: string;
+}
+
+export interface ProposalDrawing {
+	id: string;
+	proposal_id: string;
+	name: string;
+	storage_path: string;
+	preview_paths: string[];
+	zoom_paths: string[];
+	page_count: number | null;
+	size_bytes: number | null;
+	created_at: string;
 }

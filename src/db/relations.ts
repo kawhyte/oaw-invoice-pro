@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm/relations'
 import {
   invoices, project_deliverables, projects, clients, invoice_payments,
   project_files, project_notes, project_tasks, invoice_line_items,
+  proposals, proposal_line_items, proposal_versions, proposal_responses, proposal_drawings,
 } from './schema'
 
 // Relation names deliberately match the Supabase embed names the app used
@@ -57,4 +58,30 @@ export const project_tasksRelations = relations(project_tasks, ({ one }) => ({
 export const invoice_line_itemsRelations = relations(invoice_line_items, ({ one }) => ({
   invoices: one(invoices, { fields: [invoice_line_items.invoice_id], references: [invoices.id] }),
   projects: one(projects, { fields: [invoice_line_items.project_id], references: [projects.id] }),
+}))
+
+// Proposals: no relation back from invoices (queried by id) to avoid ambiguous pairs
+// from the two-way proposal <-> invoice link.
+export const proposalsRelations = relations(proposals, ({ one, many }) => ({
+  clients: one(clients, { fields: [proposals.client_id], references: [clients.id] }),
+  proposal_line_items: many(proposal_line_items),
+  proposal_versions: many(proposal_versions),
+  proposal_responses: many(proposal_responses),
+  proposal_drawings: many(proposal_drawings),
+}))
+
+export const proposal_line_itemsRelations = relations(proposal_line_items, ({ one }) => ({
+  proposals: one(proposals, { fields: [proposal_line_items.proposal_id], references: [proposals.id] }),
+}))
+
+export const proposal_versionsRelations = relations(proposal_versions, ({ one }) => ({
+  proposals: one(proposals, { fields: [proposal_versions.proposal_id], references: [proposals.id] }),
+}))
+
+export const proposal_responsesRelations = relations(proposal_responses, ({ one }) => ({
+  proposals: one(proposals, { fields: [proposal_responses.proposal_id], references: [proposals.id] }),
+}))
+
+export const proposal_drawingsRelations = relations(proposal_drawings, ({ one }) => ({
+  proposals: one(proposals, { fields: [proposal_drawings.proposal_id], references: [proposals.id] }),
 }))

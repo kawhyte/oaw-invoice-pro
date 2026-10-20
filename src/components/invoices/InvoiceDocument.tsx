@@ -1,47 +1,8 @@
-import path from 'path'
-import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { discountAmountFor } from '@/lib/invoiceCalc'
 import type { Invoice, InvoiceLineItem, BusinessSettings } from '@/types'
 
-// ── Brand fonts (server-only; InvoiceDocument renders in the nodejs PDF route) ──
-const FONT_DIR = path.join(process.cwd(), 'public', 'fonts')
-const SERIF = 'LibreCaslon'
-const SANS = 'Hanken'
-const MONO = 'JetBrainsMono'
-
-Font.register({
-  family: SERIF,
-  fonts: [
-    { src: path.join(FONT_DIR, 'LibreCaslonText-Regular.ttf') },
-    { src: path.join(FONT_DIR, 'LibreCaslonText-Bold.ttf'), fontWeight: 'bold' },
-    { src: path.join(FONT_DIR, 'LibreCaslonText-Italic.ttf'), fontStyle: 'italic' },
-  ],
-})
-Font.register({
-  family: SANS,
-  fonts: [
-    { src: path.join(FONT_DIR, 'HankenGrotesk-Regular.ttf') },
-    { src: path.join(FONT_DIR, 'HankenGrotesk-SemiBold.ttf'), fontWeight: 600 },
-  ],
-})
-Font.register({
-  family: MONO,
-  fonts: [
-    { src: path.join(FONT_DIR, 'JetBrainsMono-Regular.ttf') },
-    { src: path.join(FONT_DIR, 'JetBrainsMono-Medium.ttf'), fontWeight: 500 },
-  ],
-})
-// Keep long descriptions from being hyphenated mid-word.
-Font.registerHyphenationCallback(word => [word])
-
-// ── Atelier palette ──
-const DARK = '#1a1c1e'        // charcoal — header band
-const BRONZE = '#715a3e'      // brand accent
-const BRONZE_TINT = '#f5ede4' // soft bronze — amount-owing band
-const LIME = '#f8f9fa'        // limestone — alt rows / section headers
-const W = '#ffffff'
-const MUT = '#6b7280'
-const LINE = '#e5e7eb'
+import { SERIF, SANS, MONO, DARK, BRONZE, BRONZE_TINT, LIME, W, MUT, LINE } from '@/components/pdf/brand'
 
 const S = StyleSheet.create({
   page: { fontSize: 10, color: '#374151', fontFamily: SANS },

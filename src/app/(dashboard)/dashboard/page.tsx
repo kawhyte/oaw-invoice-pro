@@ -1,5 +1,5 @@
-import { desc, eq } from 'drizzle-orm'
-import { db, invoices as invoicesTable, projects as projectsTable, business_settings } from '@/db'
+import { and, asc, between, desc, eq, inArray, isNotNull, or } from 'drizzle-orm'
+import { db, invoices as invoicesTable, projects as projectsTable, business_settings, proposals as proposalsTable } from '@/db'
 import { requireUserPage } from '@/lib/session'
 import { StatsCards } from '@/components/dashboard/StatsCards'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
@@ -13,12 +13,14 @@ import { StorageCard } from '@/components/dashboard/StorageCard'
 import { StorageCardAsync } from '@/components/dashboard/StorageCardAsync'
 import { currentLoad, DEFAULT_MAX_WORKLOAD } from '@/lib/capacity'
 import { FREE_STORAGE_BYTES } from '@/lib/uploadLimits'
-import { todayInBusinessTz } from '@/lib/dates'
+import { addDaysToDate, todayInBusinessTz } from '@/lib/dates'
+import { ProposalsCard } from '@/components/dashboard/ProposalsCard'
 
 export default async function DashboardPage() {
   const user = await requireUserPage()
+  const today = todayInBusinessTz()
 
-  const [invoices, projects, recentInvoices, settings] = await Promise.all([
+  const [invoices, projects, recentInvoices, settings, proposalAlerts] = await Promise.all([
     db.select({
       currency: invoicesTable.currency, total: invoicesTable.total, amount_paid: invoicesTable.amount_paid,
       status: invoicesTable.status, created_at: invoicesTable.created_at, due_date: invoicesTable.due_date,
@@ -38,6 +40,19 @@ export default async function DashboardPage() {
       limit: 5,
     }),
     db.query.business_settings.findFirst({ columns: { max_workload: true }, where: eq(business_settings.user_id, user.id) }),
+    // Open proposals expiring within a week (not yet expired), or where the client asked for changes.
+    db.select({
+      id: proposalsTable.id, proposal_number: proposalsTable.proposal_number, recipient_name: proposalsTable.recipient_name,
+      currency: proposalsTable.currency, total: proposalsTable.total, valid_until: proposalsTable.valid_until,
+      changes_requested_at: proposalsTable.changes_requested_at,
+    }).from(proposalsTable).where(and(
+      eq(proposalsTable.user_id, user.id),
+      inArray(proposalsTable.status, ['sent', 'revised']),
+      or(
+        between(proposalsTable.valid_until, today, addDaysToDate(today, 7)),
+        and(isNotNull(proposalsTable.changes_requested_at), between(proposalsTable.valid_until, today, '9999-12-31')),
+      ),
+    )).orderBy(asc(proposalsTable.valid_until)).limit(10),
   ])
 
   // Current workload = summed difficulty of active projects vs his ceiling.
@@ -78,7 +93,6 @@ export default async function DashboardPage() {
 
   // Overdue = past the due date with a remaining balance. Computed from due_date
   // rather than stored status so it catches invoices that lapsed without re-saving.
-  const today = todayInBusinessTz()
   const overdueInvoices = (invoices ?? []).filter(
     (i) => i.due_date && i.due_date < today && Number(i.total) - Number(i.amount_paid) > 0
   )
@@ -96,6 +110,8 @@ export default async function DashboardPage() {
       </div>
 
       <OverdueAlert count={overdueInvoices.length} owingByCurrency={overdueOwingByCurrency} />
+
+      <ProposalsCard proposals={proposalAlerts} today={today} />
 
       <StatsCards
         owedByCurrency={owedByCurrency}

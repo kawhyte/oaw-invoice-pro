@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, DraftingCompass, ReceiptText, Users, Settings, LogOut, Menu } from 'lucide-react'
+import { LayoutDashboard, DraftingCompass, ReceiptText, Users, Settings, LogOut, Menu, FileSignature } from 'lucide-react'
 import { logout } from '@/app/login/actions'
 
 const tabs = [
   { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { href: '/projects',  label: 'Projects', icon: DraftingCompass },
+  { href: '/proposals', label: 'Proposals', icon: FileSignature },
   { href: '/invoices',  label: 'Invoices', icon: ReceiptText },
 ]
 

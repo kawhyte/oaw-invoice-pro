@@ -15,3 +15,21 @@ export const BUSINESS_TIMEZONE = 'America/Jamaica'
 export function todayInBusinessTz(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TIMEZONE }).format(new Date())
 }
+
+/** YYYY-MM-DD plus n calendar days (pure date math; no timezone involved). */
+export function addDaysToDate(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
+/** Whole days from a to b (b − a), both YYYY-MM-DD. */
+export function daysBetween(a: string, b: string): number {
+  const t = (s: string) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) }
+  return Math.round((t(b) - t(a)) / 864e5)
+}
+
+/** True for a well-formed YYYY-MM-DD calendar date. */
+export function isDateString(s: unknown): s is string {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  return addDaysToDate(s, 0) === s
+}

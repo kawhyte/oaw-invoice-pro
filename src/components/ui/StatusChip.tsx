@@ -10,6 +10,13 @@ const STATUS_STYLES = {
   complete:    { bg: '#dde8dd', text: '#2a5130', label: 'Complete' },
   locked:      { bg: '#fdddb9', text: '#584329', label: 'Locked' },
   unlocked:    { bg: '#dde8dd', text: '#2a5130', label: 'Unlocked' },
+  // Proposals
+  revised:     { bg: '#d8e3fa', text: '#3c475a', label: 'Revised' },
+  accepted:    { bg: '#dde8dd', text: '#2a5130', label: 'Accepted' },
+  declined:    { bg: '#e7e8e9', text: '#44474a', label: 'Declined' },
+  expired:     { bg: '#ffdad6', text: '#93000a', label: 'Expired' },
+  converted:   { bg: '#f5ede4', text: '#715a3e', label: 'Converted' },
+  changes:     { bg: '#fdddb9', text: '#584329', label: 'Changes requested' },
 }
 
 export function StatusChip({ status }: { status: string }) {

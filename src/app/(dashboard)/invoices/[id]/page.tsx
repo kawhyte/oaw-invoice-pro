@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { and, eq } from 'drizzle-orm'
-import { db, invoices, project_files, invoice_line_items } from '@/db'
+import { db, invoices, project_files, invoice_line_items, proposals } from '@/db'
 import { requireUserPage } from '@/lib/session'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -27,6 +27,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   })
 
   if (!invoice) notFound()
+
+  // Converted from a proposal: show what was agreed and when work started.
+  const fromProposal = invoice.proposal_id
+    ? (await db.select({ id: proposals.id, proposal_number: proposals.proposal_number }).from(proposals)
+        .where(and(eq(proposals.id, invoice.proposal_id), eq(proposals.user_id, user.id))).limit(1))[0] ?? null
+    : null
 
   const project = invoice.projects as any
   // Combined invoices link the client directly; single-project ones via the project.
@@ -105,6 +111,15 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               </>
             )}
           </p>
+          {(fromProposal || invoice.agreed_amount != null || invoice.work_started_at) && (
+            <p className="text-xs text-[#8a8c94] mt-1">
+              {fromProposal && (
+                <>From proposal <Link href={`/proposals/${fromProposal.id}`} className="text-[#715a3e] hover:underline">{fromProposal.proposal_number}</Link></>
+              )}
+              {invoice.agreed_amount != null && <>{fromProposal ? ' · ' : ''}Agreed {fmt(invoice.agreed_amount)}</>}
+              {invoice.work_started_at && <>{' · '}Work started {new Date(`${invoice.work_started_at}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Jamaica' })}</>}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {invoice.status !== 'paid' && !isCombined && (
