@@ -1,8 +1,7 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { resolveLogoUrl } from '@/lib/storage'
-import { eq } from 'drizzle-orm'
-import { db, business_settings } from '@/db'
 import { requireUserPage } from '@/lib/session'
+import { NavIdentity } from '@/components/NavIdentity'
 import { NavLinks } from '@/components/NavLinks'
 import { NavDropdown } from '@/components/NavDropdown'
 import { MobileNav } from '@/components/MobileNav'
@@ -10,12 +9,9 @@ import { ConfirmProvider } from '@/components/ui/ConfirmDialog'
 import { ToastProvider } from '@/components/ui/Toast'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUserPage()
-  const bizSettings = await db.query.business_settings.findFirst({
-    columns: { business_name: true, logo_url: true },
-    where: eq(business_settings.user_id, user.id),
-  })
-  const logoUrl = await resolveLogoUrl(bizSettings?.logo_url)
+  // The only thing that must finish before the shell renders: is he signed in?
+  // Logo/name stream in via <NavIdentity>, so the page skeleton paints sooner.
+  await requireUserPage()
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex">
@@ -30,10 +26,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <NavLinks />
         </nav>
         <div className="px-3 py-4 border-t border-white/10">
-          <NavDropdown
-            logoUrl={logoUrl}
-            businessName={bizSettings?.business_name ?? null}
-          />
+          <Suspense fallback={<NavDropdown logoUrl={null} businessName={null} />}>
+            <NavIdentity />
+          </Suspense>
         </div>
       </aside>
 
@@ -46,11 +41,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Link href="/dashboard" className="text-white font-semibold text-sm tracking-wide">
             OW Studio
           </Link>
-          <NavDropdown
-            logoUrl={logoUrl}
-            businessName={bizSettings?.business_name ?? null}
-            align="down"
-          />
+          <Suspense fallback={<NavDropdown logoUrl={null} businessName={null} align="down" />}>
+            <NavIdentity align="down" />
+          </Suspense>
         </header>
 
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 lg:pb-8">

@@ -1,14 +1,15 @@
 // Bump VERSION on every sw.js change — activate deletes all caches from
 // older versions. Pages/assets are (re)cached at runtime as they're visited,
 // so a stale cache never outlives a deploy by more than one visit.
-const VERSION = 'v2'
+const VERSION = 'v3'
 const PAGE_CACHE = `ow-pages-${VERSION}`
 const ASSET_CACHE = `ow-assets-${VERSION}`
 const OFFLINE_URL = '/offline'
+const LAUNCH_URL = '/launch' // the installed app's start page (static OW Studio splash)
 const MAX_PAGES = 40 // dashboard + lists + ~10-12 projects/invoices; oldest evicted
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(PAGE_CACHE).then((c) => c.add(OFFLINE_URL)))
+  e.waitUntil(caches.open(PAGE_CACHE).then((c) => c.addAll([OFFLINE_URL, LAUNCH_URL])))
   self.skipWaiting()
 })
 
@@ -42,6 +43,21 @@ self.addEventListener('fetch', (e) => {
 
   // Never cache API routes (keep-alive, PDF/email endpoints).
   if (url.pathname.startsWith('/api/')) return
+
+  // The launch screen is static: serve it from cache instantly (refresh the
+  // cached copy in the background) so opening the app never shows a blank screen.
+  if (request.mode === 'navigate' && url.pathname === LAUNCH_URL) {
+    e.respondWith(
+      caches.open(PAGE_CACHE).then(async (c) => {
+        const hit = await c.match(LAUNCH_URL)
+        const refresh = fetch(request)
+          .then((res) => { if (res.ok) c.put(LAUNCH_URL, res.clone()); return res })
+          .catch(async () => (await c.match(OFFLINE_URL)) ?? Response.error())
+        return hit ?? refresh
+      })
+    )
+    return
+  }
 
   // Navigations: network-first; on failure serve the last cached copy of
   // that page, else the offline splash.

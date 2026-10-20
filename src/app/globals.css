@@ -86,3 +86,28 @@ select.select-field {
   background-size: 1rem;
   padding-right: 2.75rem !important;
 }
+
+/* ---- OW Studio launch screen (src/app/launch) ---------------------------- */
+/* The brand's brown rule (as on the app icon) with a soft sweep across it. */
+.launch-rule { position: relative; }
+.launch-rule::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: #a88763;
+  animation: launch-sweep 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes launch-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+/* "STUDIO" fades in as the phone's icon-only splash hands over to this screen. */
+.launch-fade { animation: launch-fade-in 0.4s ease-out both; }
+@keyframes launch-fade-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .launch-rule::after { width: 100%; transform: none; animation: launch-pulse 1.6s ease-in-out infinite; }
+  .launch-fade { animation: none; }
+}
+@keyframes launch-pulse { 50% { opacity: 0.35; } }

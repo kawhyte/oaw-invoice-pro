@@ -1,7 +1,6 @@
 import { desc, eq } from 'drizzle-orm'
 import { db, invoices as invoicesTable, projects as projectsTable, business_settings } from '@/db'
 import { requireUserPage } from '@/lib/session'
-import { totalBytes } from '@/lib/storage'
 import { StatsCards } from '@/components/dashboard/StatsCards'
 import { FinancialChart } from '@/components/dashboard/FinancialChart'
 import { ProjectMap } from '@/components/dashboard/ProjectMap'
@@ -9,7 +8,9 @@ import { RecentInvoices } from '@/components/dashboard/RecentInvoices'
 import { RecentProjects } from '@/components/dashboard/RecentProjects'
 import { OverdueAlert } from '@/components/dashboard/OverdueAlert'
 import { WorkloadCard } from '@/components/dashboard/WorkloadCard'
+import { Suspense } from 'react'
 import { StorageCard } from '@/components/dashboard/StorageCard'
+import { StorageCardAsync } from '@/components/dashboard/StorageCardAsync'
 import { currentLoad, DEFAULT_MAX_WORKLOAD } from '@/lib/capacity'
 import { FREE_STORAGE_BYTES } from '@/lib/uploadLimits'
 import { todayInBusinessTz } from '@/lib/dates'
@@ -17,7 +18,7 @@ import { todayInBusinessTz } from '@/lib/dates'
 export default async function DashboardPage() {
   const user = await requireUserPage()
 
-  const [invoices, projects, recentInvoices, settings, { data: storageUsage }] = await Promise.all([
+  const [invoices, projects, recentInvoices, settings] = await Promise.all([
     db.select({
       currency: invoicesTable.currency, total: invoicesTable.total, amount_paid: invoicesTable.amount_paid,
       status: invoicesTable.status, created_at: invoicesTable.created_at, due_date: invoicesTable.due_date,
@@ -37,15 +38,11 @@ export default async function DashboardPage() {
       limit: 5,
     }),
     db.query.business_settings.findFirst({ columns: { max_workload: true }, where: eq(business_settings.user_id, user.id) }),
-    // Real bytes stored in the bucket (one list call per 1000 objects).
-    // Falls back to 0 so the dashboard still renders if storage is unreachable.
-    totalBytes().then((n) => ({ data: n })).catch(() => ({ data: 0 })),
   ])
 
   // Current workload = summed difficulty of active projects vs his ceiling.
   const load = currentLoad(projects ?? [])
   const maxWorkload = settings?.max_workload ?? DEFAULT_MAX_WORKLOAD
-  const storageUsed = Number(storageUsage ?? 0) || 0
 
   // Drafts aren't real receivables — the client hasn't been billed — so they're
   // excluded from every money figure on the dashboard (cards and the chart).
@@ -109,7 +106,9 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <WorkloadCard load={load} max={maxWorkload} compact />
-        <StorageCard usedBytes={storageUsed} limitBytes={FREE_STORAGE_BYTES} />
+        <Suspense fallback={<StorageCard usedBytes={0} limitBytes={FREE_STORAGE_BYTES} pending />}>
+          <StorageCardAsync />
+        </Suspense>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,7 +1,7 @@
 import { capacityView } from '@/lib/capacity'
 import { formatGB } from '@/lib/uploadLimits'
 
-interface Props { usedBytes: number; limitBytes: number }
+interface Props { usedBytes: number; limitBytes: number; pending?: boolean }
 
 /**
  * Free-plan storage meter. Shows total B2 storage used against the 10 GB
@@ -10,7 +10,7 @@ interface Props { usedBytes: number; limitBytes: number }
  * (>=80%) and red when over. Explanatory text only appears when near/over —
  * the healthy state is intentionally minimal.
  */
-export function StorageCard({ usedBytes, limitBytes }: Props) {
+export function StorageCard({ usedBytes, limitBytes, pending = false }: Props) {
   const { pct, zone } = capacityView(usedBytes, limitBytes)
   const barColor = zone === 'over' ? 'bg-red-500' : zone === 'near' ? 'bg-amber-500' : 'bg-[#715a3e]'
   const leftBytes = Math.max(limitBytes - usedBytes, 0)
@@ -19,12 +19,12 @@ export function StorageCard({ usedBytes, limitBytes }: Props) {
     <div className="bg-white rounded-xl border border-[#e0e0e3] shadow-card p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-[#1a1c1e]">File Storage</h2>
-        <span className="text-xs text-[#8a8c94] data-mono">{formatGB(usedBytes)} of {formatGB(limitBytes)} used</span>
+        <span className="text-xs text-[#8a8c94] data-mono">{pending ? 'Checking storage…' : `${formatGB(usedBytes)} of ${formatGB(limitBytes)} used`}</span>
       </div>
-      <div className="mt-3 h-2 w-full rounded-full bg-[#f0f0f2] overflow-hidden">
+      <div className={`mt-3 h-2 w-full rounded-full bg-[#f0f0f2] overflow-hidden ${pending ? 'animate-pulse' : ''}`}>
         <div
           className={`h-full rounded-full transition-all ${barColor}`}
-          style={{ width: `${Math.max(pct, 4)}%` }}
+          style={{ width: pending ? '0%' : `${Math.max(pct, 4)}%` }}
         />
       </div>
       <p className="mt-2 text-xs text-[#8a8c94]"> Available storage for your uploaded documents &amp; drawings</p>

@@ -9,7 +9,8 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/share') ||
     pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/offline')
+    pathname.startsWith('/offline') ||
+    pathname.startsWith('/launch')
   const hasSession = !!getSessionCookie(request)
 
   if (!hasSession && !isPublic) {

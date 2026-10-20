@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     "public/pdf.worker.min.mjs",
     // drizzle-kit output (migrations + introspection snapshot)
     "drizzle/**",
+    // Claude Code side-session worktrees (separate checkouts with their own builds)
+    ".claude/**",
+    // Android project build output
+    "android/**",
   ]),
 ]);
 

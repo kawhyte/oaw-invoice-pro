@@ -5,10 +5,12 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'OW Studio',
     short_name: 'OW Studio',
     description: 'Professional invoice and project management for contractors',
-    start_url: '/dashboard',
+    // Opens on the cached OW Studio launch screen, which hands over to /dashboard.
+    // id stays '/dashboard' so installed copies keep their identity.
+    start_url: '/launch',
     id: '/dashboard',
     display: 'standalone',
-    background_color: '#ffffff',
+    background_color: '#1a1c1e',
     theme_color: '#1a1c1e',
     // 'any' so drawings can be viewed in landscape.
     orientation: 'any',
