@@ -15,18 +15,19 @@ export function LaunchReady() {
   return null
 }
 
-// After the launch screen hands over (LaunchRedirect sets data-launch on
-// <html>), this keeps the same dark screen over the dashboard until its
+// After the launch screen hands over (LaunchRedirect sets the ow_launch
+// cookie; the dashboard layout reads it and passes `active`), this keeps the same dark screen over the dashboard until its
 // content is in (LaunchReady, or 2.5s at most), then fades it out, so opening
 // the app dissolves straight into the finished page: no cut to white and no
 // skeleton showing through. Renders nothing on any other navigation.
-export function LaunchReveal() {
-  const [phase, setPhase] = useState<'off' | 'hold' | 'fade'>(() =>
-    typeof document !== 'undefined' && document.documentElement.dataset.launch === '1' ? 'hold' : 'off',
-  )
+export function LaunchReveal({ active }: { active: boolean }) {
+  const [phase, setPhase] = useState<'off' | 'hold' | 'fade'>(active ? 'hold' : 'off')
 
   useEffect(() => {
-    delete document.documentElement.dataset.launch
+    if (active) document.cookie = 'ow_launch=; path=/; max-age=0'
+  }, [active])
+
+  useEffect(() => {
     if (phase !== 'hold') return
     const go = () => setPhase('fade')
     if (window.__owPageReady) { go(); return }

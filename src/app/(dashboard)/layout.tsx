@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { requireUserPage } from '@/lib/session'
 import { NavIdentity } from '@/components/NavIdentity'
@@ -13,6 +14,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // The only thing that must finish before the shell renders: is he signed in?
   // Logo/name stream in via <NavIdentity>, so the page skeleton paints sooner.
   await requireUserPage()
+  // Set by the launch screen: draw it over this first paint, then fade it out.
+  const fromLaunch = (await cookies()).get('ow_launch')?.value === '1'
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex">
@@ -53,7 +56,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </div>
 
       <MobileNav />
-      <LaunchReveal />
+      <LaunchReveal active={fromLaunch} />
     </div>
   )
 }
