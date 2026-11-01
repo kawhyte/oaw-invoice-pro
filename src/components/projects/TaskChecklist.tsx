@@ -5,7 +5,7 @@ import { addTaskAction, toggleTaskAction, deleteTaskAction } from '@/app/(dashbo
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
-import { MarkCompleteButton } from '@/components/projects/MarkCompleteButton'
+import { MarkCompleteLink } from '@/components/projects/ProjectStatusActions'
 import type { ProjectStatus, ProjectTask } from '@/types'
 
 interface Props { projectId: string; tasks: ProjectTask[]; projectStatus: ProjectStatus }
@@ -37,7 +37,7 @@ export function TaskChecklist({ projectId, tasks, projectStatus }: Props) {
   const doneCount = tasks.filter(t => t.completed).length
   // A fully ticked checklist already drops off the Workload card; nudge him to
   // close the job so its status says so too.
-  const allDone = tasks.length > 0 && doneCount === tasks.length && projectStatus !== 'complete'
+  const allDone = tasks.length > 0 && doneCount === tasks.length && projectStatus !== 'complete' && projectStatus !== 'on_hold'
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -94,7 +94,7 @@ export function TaskChecklist({ projectId, tasks, projectStatus }: Props) {
         {allDone && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f8f5f0] border border-[#e8dfd2] px-3 py-2 text-sm text-[#5a5c62]">
             <span>All tasks done. This job no longer counts toward your workload.</span>
-            <MarkCompleteButton projectId={projectId} status={projectStatus} variant="link" />
+            <MarkCompleteLink projectId={projectId} />
           </div>
         )}
         <form onSubmit={handleAdd} className="space-y-2">

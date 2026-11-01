@@ -7,6 +7,7 @@ const STATUS_STYLES = {
   discovery:   { bg: '#e7e8e9', text: '#44474a', label: 'Discovery' },
   in_progress: { bg: '#d8e3fa', text: '#3c475a', label: 'In Progress' },
   review:      { bg: '#fdddb9', text: '#584329', label: 'Review' },
+  on_hold:     { bg: '#ececee', text: '#6b6e75', label: 'On hold' },
   complete:    { bg: '#dde8dd', text: '#2a5130', label: 'Complete' },
   locked:      { bg: '#fdddb9', text: '#584329', label: 'Locked' },
   unlocked:    { bg: '#dde8dd', text: '#2a5130', label: 'Unlocked' },

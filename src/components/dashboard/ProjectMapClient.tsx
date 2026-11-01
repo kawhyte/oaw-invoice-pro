@@ -4,12 +4,14 @@ const STATUS_COLORS: Record<string, string> = {
   discovery: '#9ca3af',
   in_progress: '#3b82f6',
   review: '#f59e0b',
+  on_hold: '#6b7280',
   complete: '#22c55e',
 }
 const STATUS_LABELS: Record<string, string> = {
   discovery: 'Discovery',
   in_progress: 'In Progress',
   review: 'Review',
+  on_hold: 'On hold',
   complete: 'Complete',
 }
 
