@@ -96,7 +96,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div>
           <Link href="/projects" className="text-sm text-[#8a8c94] hover:text-[#5a5c62]">← Projects</Link>
           <div className="flex items-center gap-2 mt-2">

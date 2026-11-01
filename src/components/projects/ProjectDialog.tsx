@@ -11,6 +11,7 @@ const STATUS_OPTIONS = [
   { value: 'discovery', label: 'Discovery' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'review', label: 'Review' },
+  { value: 'on_hold', label: 'On hold' },
   { value: 'complete', label: 'Complete' },
 ]
 
@@ -59,7 +60,7 @@ export function ProjectDialog({ project, clients, onClose, defaultIsPersonal = f
 
   async function handleDelete() {
     if (!project) return
-    if (!(await confirm({ title: 'Delete this project?', description: 'This permanently deletes the project and cannot be undone.', confirmLabel: 'Delete', variant: 'danger' }))) return
+    if (!(await confirm({ title: 'Delete this project?', description: 'This permanently deletes the project, its checklist, notes and files, and cannot be undone. To keep it for your records, use Mark complete (finished) or Put on hold (paused) instead.', confirmLabel: 'Delete', variant: 'danger' }))) return
     startTransition(async () => {
       try {
         await deleteProjectAction(project.id)

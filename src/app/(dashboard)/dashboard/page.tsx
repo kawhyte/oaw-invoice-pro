@@ -90,7 +90,7 @@ export default async function DashboardPage() {
   const invoiced30ByCurrency = Object.entries(invoiced30Map).map(([currency, total]) => ({ currency, total }))
 
   // Active projects = anything not yet complete (what he's actually working on)
-  const activeProjects = (projects ?? []).filter((p) => p.status !== 'complete').length
+  const activeProjects = (projects ?? []).filter((p) => p.status !== 'complete' && p.status !== 'on_hold').length
 
   // Overdue = past the due date with a remaining balance. Computed from due_date
   // rather than stored status so it catches invoices that lapsed without re-saving.
