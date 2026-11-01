@@ -82,6 +82,13 @@ export async function deleteNoteAction(noteId: string, projectId: string) {
 
 // ---- Checklist tasks (available on all projects) ---------------------------
 
+// A fully ticked checklist zeroes the project's workload, so task changes also
+// refresh the pages that show the Workload card.
+function revalidateWorkload() {
+  revalidatePath('/projects')
+  revalidatePath('/dashboard')
+}
+
 export async function addTaskAction(
   projectId: string,
   fields: { title: string; cost: number | null; due_date: string | null }
@@ -98,6 +105,7 @@ export async function addTaskAction(
     sort_order: (last?.sort_order ?? 0) + 1,
   })
   revalidatePath(`/projects/${projectId}`)
+  revalidateWorkload()
 }
 
 export async function toggleTaskAction(projectId: string, taskId: string, completed: boolean) {
@@ -105,6 +113,7 @@ export async function toggleTaskAction(projectId: string, taskId: string, comple
   await db.update(project_tasks).set({ completed })
     .where(and(eq(project_tasks.id, taskId), eq(project_tasks.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
+  revalidateWorkload()
 }
 
 export async function updateTaskAction(
@@ -122,6 +131,7 @@ export async function deleteTaskAction(projectId: string, taskId: string) {
   await assertProjectOwner(projectId)
   await db.delete(project_tasks).where(and(eq(project_tasks.id, taskId), eq(project_tasks.project_id, projectId)))
   revalidatePath(`/projects/${projectId}`)
+  revalidateWorkload()
 }
 
 export async function rotateShareTokenAction(projectId: string) {

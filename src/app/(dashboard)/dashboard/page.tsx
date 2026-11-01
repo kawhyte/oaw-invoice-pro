@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     }).from(invoicesTable).where(eq(invoicesTable.user_id, user.id)),
     db.query.projects.findMany({
       where: eq(projectsTable.user_id, user.id),
-      with: { clients: { columns: { name: true } } },
+      with: { clients: { columns: { name: true } }, project_tasks: { columns: { completed: true } } },
       orderBy: desc(projectsTable.updated_at),
     }),
     db.query.invoices.findMany({
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
   const invoiced30ByCurrency = Object.entries(invoiced30Map).map(([currency, total]) => ({ currency, total }))
 
   // Active projects = anything not yet complete (what he's actually working on)
-  const activeProjects = (projects ?? []).filter((p) => p.status !== 'complete').length
+  const activeProjects = (projects ?? []).filter((p) => p.status !== 'complete' && p.status !== 'on_hold').length
 
   // Overdue = past the due date with a remaining balance. Computed from due_date
   // rather than stored status so it catches invoices that lapsed without re-saving.

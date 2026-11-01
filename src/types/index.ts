@@ -1,5 +1,5 @@
 export type Currency = "USD" | "JMD";
-export type ProjectStatus = "discovery" | "in_progress" | "review" | "complete";
+export type ProjectStatus = "discovery" | "in_progress" | "review" | "on_hold" | "complete";
 export type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "overdue";
 export type PaymentStatus = "pending" | "paid";
 export type DiscountType = "none" | "percentage" | "fixed";
@@ -39,6 +39,7 @@ export const STATUS_WEIGHT_FACTOR: Record<ProjectStatus, number> = {
 	discovery: 0.5,
 	in_progress: 1,
 	review: 0.5,
+	on_hold: 0, // paused by the client — frees bandwidth until he resumes it
 	complete: 0,
 };
 

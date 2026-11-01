@@ -12,12 +12,16 @@ import type { Project } from '@/types'
 // Settings; this is only the fallback when the owner hasn't set their own.
 export const DEFAULT_MAX_WORKLOAD = 30
 
-type LoadInput = Pick<Project, 'job_type' | 'status'>
+type LoadInput = Pick<Project, 'job_type' | 'status'> & { project_tasks?: { completed: boolean }[] }
 
 // A single project's contribution to current load. Unknown/retired/null job
 // types fall back to the easiest weight ("Other"); completed projects are
-// zeroed via the status factor, so they drop off automatically.
+// zeroed via the status factor, so they drop off automatically. A project whose
+// checklist is fully ticked (at least one task) also counts as done, even if
+// its status was never changed.
 export function projectLoad(p: LoadInput): number {
+	const tasks = p.project_tasks ?? []
+	if (tasks.length > 0 && tasks.every((t) => t.completed)) return 0
 	const base = JOB_TYPE_WEIGHTS[p.job_type ?? ''] ?? JOB_TYPE_WEIGHTS['Other']
 	return base * (STATUS_WEIGHT_FACTOR[p.status] ?? 0)
 }

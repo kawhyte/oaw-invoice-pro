@@ -5,9 +5,10 @@ import { addTaskAction, toggleTaskAction, deleteTaskAction } from '@/app/(dashbo
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast, toErrorMessage } from '@/components/ui/Toast'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
-import type { ProjectTask } from '@/types'
+import { MarkCompleteLink } from '@/components/projects/ProjectStatusActions'
+import type { ProjectStatus, ProjectTask } from '@/types'
 
-interface Props { projectId: string; tasks: ProjectTask[] }
+interface Props { projectId: string; tasks: ProjectTask[]; projectStatus: ProjectStatus }
 
 function formatCost(n: number) {
   return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -19,7 +20,7 @@ function formatDue(d: string) {
   return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export function TaskChecklist({ projectId, tasks }: Props) {
+export function TaskChecklist({ projectId, tasks, projectStatus }: Props) {
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [cost, setCost] = useState('')
@@ -34,6 +35,9 @@ export function TaskChecklist({ projectId, tasks }: Props) {
   })
 
   const doneCount = tasks.filter(t => t.completed).length
+  // A fully ticked checklist already drops off the Workload card; nudge him to
+  // close the job so its status says so too.
+  const allDone = tasks.length > 0 && doneCount === tasks.length && projectStatus !== 'complete' && projectStatus !== 'on_hold'
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -87,6 +91,12 @@ export function TaskChecklist({ projectId, tasks }: Props) {
         )}
       </div>
       <div className="p-6 space-y-4">
+        {allDone && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#f8f5f0] border border-[#e8dfd2] px-3 py-2 text-sm text-[#5a5c62]">
+            <span>All tasks done. This job no longer counts toward your workload.</span>
+            <MarkCompleteLink projectId={projectId} />
+          </div>
+        )}
         <form onSubmit={handleAdd} className="space-y-2">
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a task…"
             className="w-full px-3 py-2 border border-[#e0e0e3] rounded-lg text-sm text-[#1a1c1e] bg-white placeholder:text-[#8a8c94] focus:outline-none focus:ring-1 focus:ring-[#715a3e] focus:border-[#715a3e]" />

@@ -11,7 +11,7 @@ export default async function ProjectsPage() {
   const [projects, clients, settings] = await Promise.all([
     db.query.projects.findMany({
       where: eq(projectsTable.user_id, user.id),
-      with: { clients: true },
+      with: { clients: true, project_tasks: { columns: { completed: true } } },
       orderBy: desc(projectsTable.created_at),
     }),
     db.select().from(clientsTable).where(eq(clientsTable.user_id, user.id)).orderBy(asc(clientsTable.name)),
