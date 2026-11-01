@@ -234,7 +234,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
       )}
 
-      <TaskChecklist projectId={id} tasks={tasks as ProjectTask[]} />
+      <TaskChecklist projectId={id} tasks={tasks as ProjectTask[]} projectStatus={project.status} />
 
       <ProjectNotes projectId={id} notes={notes as ProjectNote[]} showClientBadge={!project.is_personal} />
       {!project.is_personal && (

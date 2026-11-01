@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     }).from(invoicesTable).where(eq(invoicesTable.user_id, user.id)),
     db.query.projects.findMany({
       where: eq(projectsTable.user_id, user.id),
-      with: { clients: { columns: { name: true } } },
+      with: { clients: { columns: { name: true } }, project_tasks: { columns: { completed: true } } },
       orderBy: desc(projectsTable.updated_at),
     }),
     db.query.invoices.findMany({
