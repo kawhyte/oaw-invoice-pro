@@ -108,6 +108,16 @@ export interface ProjectFile {
 	uploaded_at: string;
 }
 
+/** One sheet's watermarked full-detail raster, cut into square tiles (row-major). */
+export interface DetailPage {
+	width: number;
+	height: number;
+	tile: number;
+	tiles: string[];
+}
+
+export type ReviewLevel = 'basic' | 'detail';
+
 export interface ProjectDeliverable {
 	id: string;
 	project_id: string;
@@ -120,6 +130,11 @@ export interface ProjectDeliverable {
 	linked_invoice_id: string | null;
 	manual_unlock: boolean;
 	created_at: string;
+	detail_pages: DetailPage[];
+	review_level: ReviewLevel;
+	/** Client review closes at this instant; null = no time limit. */
+	review_expires_at: string | null;
+	allow_sample_download: boolean;
 }
 
 export interface InvoiceLineItem {

@@ -1,10 +1,13 @@
 'use server'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db, projects, project_notes, project_tasks, project_files, project_deliverables, invoices } from '@/db'
 import { requireUser } from '@/lib/session'
 import { MAX_UPLOAD_BYTES } from '@/lib/uploadLimits'
 import { signedPutUrl, removeObjects } from '@/lib/storage'
+import { detailGrid, detailKeys, DETAIL_TILE, DETAIL_MAX_EDGE } from '@/lib/drawingDetail'
+import { MAX_REVIEW_DAYS, reviewExpiry } from '@/lib/deliverables'
+import type { DetailPage, ReviewLevel } from '@/types'
 
 // Uploads go browser → object storage through presigned PUT URLs that only
 // these actions issue (key chosen here, Content-Type + Content-Length signed).
@@ -247,6 +250,7 @@ export async function deleteDeliverableAction(deliverableId: string, projectId: 
     storage_path: project_deliverables.storage_path,
     preview_paths: project_deliverables.preview_paths,
     zoom_paths: project_deliverables.zoom_paths,
+    detail_pages: project_deliverables.detail_pages,
   }).from(project_deliverables)
     .where(and(eq(project_deliverables.id, deliverableId), eq(project_deliverables.project_id, projectId))).limit(1)
   if (!deliverable) throw new Error('Not found')
@@ -256,9 +260,111 @@ export async function deleteDeliverableAction(deliverableId: string, projectId: 
     deliverable.storage_path,
     ...asPaths(deliverable.preview_paths),
     ...asPaths(deliverable.zoom_paths),
+    ...detailKeys(deliverable.detail_pages),
   ].filter(Boolean)
 
   await removeObjects(paths)
   await db.delete(project_deliverables).where(eq(project_deliverables.id, deliverableId))
+  revalidatePath(`/projects/${projectId}`)
+}
+
+// ---- Full-detail review (watermarked, zoomable, time-limited) ----------------
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function assertOwnDeliverable(projectId: string, deliverableId: string) {
+  const user = await assertProjectOwner(projectId)
+  const [d] = await db.select().from(project_deliverables)
+    .where(and(eq(project_deliverables.id, deliverableId), eq(project_deliverables.project_id, projectId))).limit(1)
+  if (!d) throw new Error('Not found')
+  return { user, d }
+}
+
+// Keys are always derived here, never taken from the browser. A fresh runId per
+// build means a re-build never overwrites tiles a client is looking at.
+function detailTileKeys(userId: string, projectId: string, deliverableId: string, runId: string, page: number, width: number, height: number) {
+  if (!UUID.test(runId)) throw new Error('Invalid run')
+  if (!Number.isInteger(page) || page < 0 || page >= 200) throw new Error('Unexpected page')
+  if (![width, height].every(n => Number.isInteger(n) && n > 0 && n <= DETAIL_MAX_EDGE)) throw new Error('Unexpected page size')
+  return detailGrid(width, height, DETAIL_TILE)
+    .map((_, i) => `${userId}/${projectId}/deliverables/${deliverableId}-detail/${runId}/p${page + 1}-t${i + 1}.jpg`)
+}
+
+/** Approves one page's tile uploads. Per page, so URLs can't lapse mid-drawing on slow connections. */
+export async function createDetailUploadAction(
+  projectId: string, deliverableId: string, runId: string,
+  page: { index: number; width: number; height: number; sizes: number[] },
+) {
+  const { user } = await assertOwnDeliverable(projectId, deliverableId)
+  const keys = detailTileKeys(user.id, projectId, deliverableId, runId, page.index, page.width, page.height)
+  if (page.sizes.length !== keys.length || page.sizes.some(s => !(s > 0 && s <= 15 * 1024 * 1024))) {
+    throw new Error('Unexpected image size')
+  }
+  return Promise.all(keys.map((k, i) => signedPutUrl(k, 'image/jpeg', page.sizes[i])))
+}
+
+export async function saveDetailAction(
+  projectId: string, deliverableId: string, runId: string, pages: { width: number; height: number }[],
+) {
+  const { user, d } = await assertOwnDeliverable(projectId, deliverableId)
+  if (pages.length === 0 || pages.length !== (d.preview_paths ?? []).length) throw new Error('Unexpected page count')
+  const detail: DetailPage[] = pages.map((p, i) => ({
+    width: p.width, height: p.height, tile: DETAIL_TILE,
+    tiles: detailTileKeys(user.id, projectId, deliverableId, runId, i, p.width, p.height),
+  }))
+  await db.update(project_deliverables).set({ detail_pages: detail }).where(eq(project_deliverables.id, deliverableId))
+  await removeObjects(detailKeys(d.detail_pages)).catch(() => {})
+  revalidatePath(`/projects/${projectId}`)
+}
+
+/** Best-effort cleanup when a build fails part-way, so half-built tiles don't eat free storage. */
+export async function discardDetailAction(
+  projectId: string, deliverableId: string, runId: string, pages: { width: number; height: number }[],
+) {
+  const { user, d } = await assertOwnDeliverable(projectId, deliverableId)
+  const live = new Set(detailKeys(d.detail_pages))
+  const keys = pages.flatMap((p, i) => detailTileKeys(user.id, projectId, deliverableId, runId, i, p.width, p.height))
+  await removeObjects(keys.filter(k => !live.has(k)))
+}
+
+/** Applies one set of review rules to the chosen drawings. `days: null` = no time limit. */
+export async function updateReviewAction(
+  projectId: string, deliverableIds: string[],
+  settings: { level: ReviewLevel; days: number | null; allowDownload: boolean },
+) {
+  await assertProjectOwner(projectId)
+  const { level, days } = settings
+  if (level !== 'basic' && level !== 'detail') throw new Error('Invalid review level')
+  if (days !== null && !(Number.isInteger(days) && days >= 1 && days <= MAX_REVIEW_DAYS)) {
+    throw new Error(`Choose between 1 and ${MAX_REVIEW_DAYS} days`)
+  }
+  if (deliverableIds.length === 0) throw new Error('Choose at least one drawing')
+  const rows = await db.select({ id: project_deliverables.id, detail_pages: project_deliverables.detail_pages })
+    .from(project_deliverables)
+    .where(and(eq(project_deliverables.project_id, projectId), inArray(project_deliverables.id, deliverableIds)))
+  if (rows.length !== new Set(deliverableIds).size) throw new Error('Not found')
+  if (level === 'detail' && rows.some(r => (r.detail_pages ?? []).length === 0)) {
+    throw new Error('The sharp version is not ready yet. Please try again.')
+  }
+  await db.update(project_deliverables).set({
+    review_level: level,
+    review_expires_at: days === null ? null : reviewExpiry(days),
+    allow_sample_download: level === 'detail' && settings.allowDownload,
+  }).where(inArray(project_deliverables.id, rows.map(r => r.id)))
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function extendReviewAction(projectId: string, deliverableId: string, days: number) {
+  const { d } = await assertOwnDeliverable(projectId, deliverableId)
+  if (!(Number.isInteger(days) && days >= 1 && days <= MAX_REVIEW_DAYS)) throw new Error('Invalid number of days')
+  await db.update(project_deliverables).set({ review_expires_at: reviewExpiry(days, d.review_expires_at) })
+    .where(eq(project_deliverables.id, deliverableId))
+  revalidatePath(`/projects/${projectId}`)
+}
+
+export async function endReviewAction(projectId: string, deliverableId: string) {
+  await assertOwnDeliverable(projectId, deliverableId)
+  await db.update(project_deliverables).set({ review_expires_at: new Date().toISOString() })
+    .where(eq(project_deliverables.id, deliverableId))
   revalidatePath(`/projects/${projectId}`)
 }

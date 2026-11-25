@@ -16,7 +16,7 @@ import { BudgetTracker } from '@/components/projects/BudgetTracker'
 import { ProjectDetailHeader } from './ProjectDetailHeader'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { VisibilityBadge } from '@/components/ui/VisibilityBadge'
-import { isFinalUnlocked } from '@/lib/deliverables'
+import { isFinalUnlocked, reviewAccess, reviewDaysLeft } from '@/lib/deliverables'
 import type { Client, ProjectFile, ProjectDeliverable, ProjectNote, ProjectTask } from '@/types'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -89,10 +89,38 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     } else {
       gateLabel = 'Locked — release manually to share'
     }
-    return { id: d.id, name: d.name, page_count: d.page_count, manual_unlock: d.manual_unlock, unlocked, gateLabel, warn }
+    const access = reviewAccess(d, inv)
+    const ended = !access.open
+    const daysLeft = d.review_expires_at ? reviewDaysLeft(d.review_expires_at) : null
+    const reviewLabel = ended
+      ? 'Review ended — client can’t view this drawing'
+      : [
+          d.review_level === 'detail' ? 'Full detail' : 'Basic preview',
+          daysLeft === null ? 'No time limit' : daysLeft <= 0 ? 'Ends tonight' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`,
+          ...(d.review_level === 'detail' ? [`Download ${d.allow_sample_download ? 'on' : 'off'}`] : []),
+        ].join(' · ')
+    const money = (n: number) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })
+    const paymentLabel = inv
+      ? `${inv.invoice_number}: ${inv.currency} ${money(inv.amount_paid ?? 0)} paid of ${money(inv.total)}`
+      : 'No invoice linked, so nothing shows as paid for this drawing.'
+    return {
+      reviewLevel: d.review_level, hasDetail: (d.detail_pages ?? []).length > 0, allowDownload: d.allow_sample_download,
+      limited: !!d.review_expires_at, ended, reviewLabel, paymentLabel,
+      id: d.id, name: d.name, page_count: d.page_count, manual_unlock: d.manual_unlock, unlocked, gateLabel, warn,
+    }
   })
   const deliverableInvoiceOptions = allInvoices.map((inv: any) => ({ id: inv.id, invoice_number: inv.invoice_number, status: inv.status }))
   const watermarkText = `DRAFT · ${settings?.business_name || 'OW Studio'} · NOT FOR PRINT`
+
+  const client = project.clients as Pick<Client, 'name' | 'phone' | 'email'> | null
+  const drawingShare = {
+    shareUrl: `${origin}/share/${project.share_token}`,
+    projectTitle: project.title,
+    clientName: client?.name ?? null,
+    clientPhone: client?.phone ?? null,
+    clientEmail: client?.email ?? null,
+    sampleWatermark: ['SAMPLE', settings?.business_name || 'OW Studio', ...(client?.name ? [`Prepared for ${client.name}`] : [])].join(' · '),
+  }
 
   return (
     <div className="space-y-6">
@@ -155,12 +183,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <h2 className="label-caps">Drawings</h2>
               <VisibilityBadge variant="gated" />
             </div>
-            <p className="text-xs text-[#8a8c94] mt-1">Clients review a watermarked draft; the print-ready file unlocks when the linked invoice is paid (or you release it). Accepts PDF files only.</p>
+            <p className="text-xs text-[#8a8c94] mt-1">Clients review a watermarked copy. You choose how much they see and for how long. The print-ready file unlocks when the linked invoice is paid (or you release it). Accepts PDF files only.</p>
           </div>
           <DeliverableUpload projectId={id} userId={user.id} invoices={deliverableInvoiceOptions} watermarkText={watermarkText} />
         </div>
         <div className="p-6">
-          <DeliverableList projectId={id} deliverables={deliverableRows} />
+          <DeliverableList projectId={id} deliverables={deliverableRows} share={drawingShare} />
         </div>
       </div>
       )}
