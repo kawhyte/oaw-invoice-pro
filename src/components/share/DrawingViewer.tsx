@@ -183,7 +183,10 @@ function ZoomStage({ page, name, index, total, onClose, onGo }: {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-4 py-2 text-white shrink-0">
-        <span className="text-sm truncate">{name} · page {index + 1} of {total}</span>
+        <span className="flex min-w-0 text-sm">
+          <span className="truncate">{name}</span>
+          <span className="shrink-0 whitespace-pre"> · page {index + 1} of {total}</span>
+        </span>
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={() => zoomAt(1 / 1.6, 0, 0)} disabled={v.s <= MIN_SCALE} aria-label="Zoom out" className={btn}><ZoomOut className="w-5 h-5" /></button>
           <button onClick={() => zoomAt(1.6, 0, 0)} disabled={v.s >= maxScale} aria-label="Zoom in" className={btn}><ZoomIn className="w-5 h-5" /></button>

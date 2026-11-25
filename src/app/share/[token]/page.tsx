@@ -219,7 +219,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             <div className="p-6 space-y-4">
               {(invoices ?? []).map((inv: any) => {
                 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: inv.currency }).format(n)
-                const STATUS: Record<string, string> = { unpaid: 'Unpaid', partial: 'Partially Paid', paid: 'Paid', overdue: 'Overdue' }
+                // Draft/sent are the owner's wording; to the client both simply mean unpaid.
+                const STATUS: Record<string, string> = { draft: 'Unpaid', sent: 'Unpaid', partial: 'Partially Paid', paid: 'Paid', overdue: 'Overdue' }
                 return (
                   <div key={inv.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
