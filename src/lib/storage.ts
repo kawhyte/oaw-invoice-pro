@@ -87,6 +87,16 @@ export async function resolveLogoUrl(logo: string | null | undefined): Promise<s
   return signedGetUrl(logo, 3600)
 }
 
+/** Streams one object without buffering it (large originals). */
+export async function getObjectStream(key: string): Promise<{ stream: ReadableStream; size?: number } | null> {
+  try {
+    const res = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key }))
+    return res.Body ? { stream: res.Body.transformToWebStream(), size: res.ContentLength } : null
+  } catch {
+    return null
+  }
+}
+
 /** Streams one object's bytes (server-side read; used for the cacheable nav logo). */
 export async function getObject(key: string): Promise<{ body: Uint8Array; contentType: string } | null> {
   try {

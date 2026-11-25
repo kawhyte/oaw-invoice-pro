@@ -8,6 +8,7 @@ import {
 } from '@/db'
 import { requireUser } from '@/lib/session'
 import { signedPutUrl, removeObjects } from '@/lib/storage'
+import { detailKeys } from '@/lib/drawingDetail'
 import { MAX_UPLOAD_BYTES } from '@/lib/uploadLimits'
 import { geocodeAddress } from '@/lib/geocode'
 import { computeTotals, lineSubtotal, round2 } from '@/lib/invoiceCalc'
@@ -517,6 +518,8 @@ export async function undoConversionAction(id: string): Promise<{ projectKept: s
               preview_paths: d.preview_paths, zoom_paths: d.zoom_paths,
               page_count: d.page_count, size_bytes: d.size_bytes,
             })))
+            // Proposals never show full detail, so those tiles are dropped (they can be remade).
+            keys.push(...moved.flatMap(d => detailKeys(d.detail_pages)))
           }
           await tx.delete(projects).where(eq(projects.id, proj.id)) // cascades its deliverable rows
         } else {

@@ -17,6 +17,8 @@
 // import it LAZILY, inside the render function, where it only ever runs in the
 // browser on user action — keeping this module safe to import from a component
 // that gets server-rendered.
+import { detailGrid, detailSize, DETAIL_TILE } from '@/lib/drawingDetail'
+
 type PdfjsModule = typeof import('react-pdf')['pdfjs']
 
 let pdfjsPromise: Promise<PdfjsModule> | null = null
@@ -146,4 +148,70 @@ export async function renderWatermarkedPreviews(
   }
 
   return { previews, zooms }
+}
+
+/** Continuous light watermark for one tile: drawn in whole-page coordinates so
+ *  it lines up across tiles, and repeated so no crop of a sheet is free of it. */
+function drawSampleWatermark(ctx: CanvasRenderingContext2D, pageW: number, pageH: number, x: number, y: number, text: string) {
+  ctx.save()
+  ctx.translate(-x, -y)
+  const fontSize = Math.max(40, Math.round(Math.max(pageW, pageH) / 60))
+  ctx.font = `bold ${fontSize}px sans-serif`
+  ctx.fillStyle = 'rgba(150, 40, 40, 0.17)'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.translate(pageW / 2, pageH / 2)
+  ctx.rotate((-30 * Math.PI) / 180)
+  const stepX = ctx.measureText(text).width + fontSize * 3
+  const stepY = fontSize * 5
+  const reach = Math.ceil(Math.hypot(pageW, pageH) / 2)
+  const cols = Math.ceil(reach / stepX) + 1
+  const rows = Math.ceil(reach / stepY)
+  for (let r = -rows; r <= rows; r++) {
+    // Offset alternate rows so there are no clear vertical lanes.
+    const shift = r % 2 ? stepX / 2 : 0
+    for (let c = -cols; c <= cols; c++) ctx.fillText(text, c * stepX + shift, r * stepY)
+  }
+  ctx.restore()
+}
+
+/**
+ * Renders a PDF's full-detail watermarked tiles page by page, handing each page
+ * to `onPage` before starting the next so memory stays bounded on phones (no
+ * canvas is ever bigger than one tile — iOS refuses very large canvases).
+ */
+export async function renderDetailTiles(
+  source: ArrayBuffer,
+  watermarkText: string,
+  onPage: (page: { index: number; total: number; width: number; height: number; tiles: Blob[] }) => Promise<void>,
+): Promise<void> {
+  const pdfjs = await getPdfjs()
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(source) }).promise
+  try {
+    for (let i = 0; i < pdf.numPages; i++) {
+      const page = await pdf.getPage(i + 1)
+      const base = page.getViewport({ scale: 1 })
+      const { width, height, scale } = detailSize(base.width, base.height)
+      const tiles: Blob[] = []
+      for (const t of detailGrid(width, height, DETAIL_TILE)) {
+        const canvas = document.createElement('canvas')
+        canvas.width = t.w
+        canvas.height = t.h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('Could not get canvas context')
+        const viewport = page.getViewport({ scale, offsetX: -t.x, offsetY: -t.y })
+        await page.render({ canvasContext: ctx, viewport, canvas }).promise
+        drawSampleWatermark(ctx, width, height, t.x, t.y, watermarkText)
+        const blob = await toJpegBlob(canvas, 0.75)
+        // Free the pixels now; Safari holds them until GC otherwise.
+        canvas.width = canvas.height = 0
+        if (!blob) throw new Error(`Failed to render page ${i + 1}`)
+        tiles.push(blob)
+      }
+      page.cleanup()
+      await onPage({ index: i, total: pdf.numPages, width, height, tiles })
+    }
+  } finally {
+    await pdf.destroy()
+  }
 }

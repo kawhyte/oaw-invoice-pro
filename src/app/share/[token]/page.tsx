@@ -1,11 +1,11 @@
 import type { Viewport } from 'next'
 import { asc, desc, eq, and, inArray } from 'drizzle-orm'
-import { db, projects, project_notes, project_files, project_deliverables, invoices as invoicesTable } from '@/db'
+import { db, projects, project_notes, project_files, project_deliverables, business_settings, invoices as invoicesTable } from '@/db'
 import { signedGetUrl } from '@/lib/storage'
 import { notFound } from 'next/navigation'
 import { StatusChip } from '@/components/ui/StatusChip'
 import { DrawingViewer } from '@/components/share/DrawingViewer'
-import { isFinalUnlocked } from '@/lib/deliverables'
+import { lastReviewDay, previewLinkSeconds, reviewAccess } from '@/lib/deliverables'
 import type { ProjectFile, ProjectNote, ProjectDeliverable } from '@/types'
 
 // Re-enable pinch-zoom on the client share page only (the app shell disables it
@@ -16,6 +16,9 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
 }
+
+const dayLabel = (ymd: string) =>
+  new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -30,7 +33,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   if (!project) notFound()
 
-  const [notes, files, invoices] = await Promise.all([
+  const [notes, files, invoices, biz] = await Promise.all([
     db.select().from(project_notes).where(eq(project_notes.project_id, project.id)).orderBy(asc(project_notes.created_at)),
     db.select().from(project_files)
       .where(and(eq(project_files.project_id, project.id), eq(project_files.is_client_visible, true)))
@@ -40,7 +43,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       with: { invoice_payments: true },
       orderBy: desc(invoicesTable.created_at),
     }),
+    db.query.business_settings.findFirst({ columns: { business_name: true }, where: eq(business_settings.user_id, project.user_id) }),
   ])
+  const businessName = biz?.business_name || 'OW Studio'
 
   const filesWithUrls = await Promise.all(
     (files as ProjectFile[]).map(async (file) => ({ ...file, signedUrl: await signedGetUrl(file.storage_path, 86400) }))
@@ -61,17 +66,27 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     : []
   const linkedInvoiceById = new Map((linkedInvoices ?? []).map((i: any) => [i.id, i]))
 
-  const signUrl = (path: string) => signedGetUrl(path, 86400)
   const drawings = await Promise.all(
     (deliverables ?? []).map(async (d: ProjectDeliverable) => {
-      const previews = await Promise.all((d.preview_paths ?? []).map(signUrl))
-      const zooms = await Promise.all((d.zoom_paths ?? []).map(signUrl))
+      const inv = d.linked_invoice_id ? linkedInvoiceById.get(d.linked_invoice_id) : null
+      const access = reviewAccess(d, inv)
+      const until = !access.final && d.review_expires_at ? d.review_expires_at : null
+      const ttl = previewLinkSeconds(access, d.review_expires_at)
+      const signUrl = (path: string) => signedGetUrl(path, ttl)
+      const previews = access.open ? await Promise.all((d.preview_paths ?? []).map(signUrl)) : []
+      const zooms = access.open ? await Promise.all((d.zoom_paths ?? []).map(signUrl)) : []
+      const detailPages = access.detail ? d.detail_pages : []
       // Pair each preview with its high-res zoom (fall back to the preview).
       const pages = previews
-        .map((preview, i) => ({ preview, zoom: zooms[i] || preview }))
+        .map((preview, i) => {
+          const dp = detailPages[i]
+          return {
+            preview, zoom: zooms[i] || preview,
+            detail: dp ? { width: dp.width, height: dp.height, tile: dp.tile, src: `/share/${token}/drawing/${d.id}/tiles/${i}` } : undefined,
+          }
+        })
         .filter(p => p.preview)
-      const inv = d.linked_invoice_id ? linkedInvoiceById.get(d.linked_invoice_id) : null
-      const unlocked = isFinalUnlocked(d, inv)
+      const unlocked = access.final
       let downloadUrl = ''
       if (unlocked) {
         // Save the file under a meaningful name (project + drawing) instead of "original.pdf".
@@ -79,7 +94,11 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         const downloadName = `${safe(project.title)} - ${safe(d.name)}.pdf`
         downloadUrl = await signedGetUrl(d.storage_path, 86400, downloadName)
       }
-      return { id: d.id, name: d.name, pages, unlocked, downloadUrl }
+      return {
+        id: d.id, name: d.name, pages, unlocked, downloadUrl, open: access.open,
+        sampleUrl: access.sample ? `/share/${token}/drawing/${d.id}/sample` : '',
+        until: until ? dayLabel(lastReviewDay(until)) : '',
+      }
     })
   )
 
@@ -139,7 +158,12 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                   <StatusChip status={d.unlocked ? 'unlocked' : 'locked'} />
                 </div>
                 <div className="p-4 sm:p-6 space-y-4">
-                  {d.pages.length === 0 ? (
+                  {!d.open ? (
+                    <div className="rounded-lg border border-[#e0e0e3] bg-[#f8f9fa] px-4 py-6 text-center">
+                      <p className="text-sm font-medium text-[#1a1c1e]">This review has ended</p>
+                      <p className="text-xs text-[#5a5c62] mt-1">Contact {businessName} to view it again.</p>
+                    </div>
+                  ) : d.pages.length === 0 ? (
                     <p className="text-sm text-[#8a8c94]">Preview is being prepared.</p>
                   ) : (
                     <DrawingViewer name={d.name} pages={d.pages} />
@@ -150,10 +174,15 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
                       className="block w-full text-center btn-primary px-4 py-2.5 text-sm rounded-lg">
                       Download print-ready file
                     </a>
-                  ) : (
+                  ) : d.open && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center">
-                      <p className="text-sm font-medium text-amber-800">Draft preview — for review only</p>
+                      <p className="text-sm font-medium text-amber-800">For review only{d.until && ` · Available until ${d.until}`}</p>
                       <p className="text-xs text-amber-700 mt-0.5">The print-ready file unlocks once payment is complete.</p>
+                      {d.sampleUrl && (
+                        <a href={d.sampleUrl} className="inline-block mt-3 px-4 py-2.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 transition-colors">
+                          Download sample PDF
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>

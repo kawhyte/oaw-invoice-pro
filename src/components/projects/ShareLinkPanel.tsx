@@ -74,7 +74,7 @@ export function ShareLinkPanel({ projectId, shareToken, showFinancials, fileCoun
               <span className="text-sm text-gray-700">Drawings</span>
             </div>
             {deliverableCount > 0
-              ? <span className="text-sm text-gray-600 text-right">{deliverableCount} drawing{deliverableCount !== 1 ? 's' : ''}<br /><span className="text-xs text-gray-400">Watermarked draft; final unlocks on payment</span></span>
+              ? <span className="text-sm text-gray-600 text-right">{deliverableCount} drawing{deliverableCount !== 1 ? 's' : ''}<br /><span className="text-xs text-gray-400">Watermarked; final unlocks on payment</span></span>
               : <span className="text-sm text-gray-400">None added</span>}
           </div>
           <div className="flex items-center justify-between px-3 py-2">
